@@ -8,6 +8,21 @@
   gap: 1.35rem;
 }
 
+.sf-form-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.15rem 1rem;
+  align-items: start;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+
+  sf-field-renderer {
+    display: contents;
+  }
+}
+
 .sf-form-title {
   margin: 0;
   font-size: 1.35rem;
@@ -26,6 +41,17 @@
 .sf-actions {
   margin-top: 0.35rem;
   padding-top: 0.35rem;
+}
+
+.sf-validation-hint {
+  margin: 0 0 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--sf-radius-sm);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .sf-submit {

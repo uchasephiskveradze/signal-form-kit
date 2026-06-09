@@ -1,4 +1,4 @@
-import { defineFormSchema } from '../../lib';
+import { defineFormSchema } from '@signal-form-kit/core';
 
 export interface Address {
   street: string;
@@ -40,15 +40,39 @@ export const onboardingSchema = defineFormSchema<OnboardingForm>({
       key: 'fullName',
       label: 'Full Name',
       type: 'text',
+      section: 'Contact',
+      layout: 'half',
       placeholder: 'John Doe',
-      validation: { required: true, minLength: 3 },
+      validation: {
+        required: true,
+        minLength: 3,
+        messages: {
+          required: 'Please enter your full name.',
+          minLength: 'Name must be at least 3 characters.',
+        },
+      },
     },
     {
       key: 'email',
       label: 'Email Address',
       type: 'email',
+      layout: 'half',
       placeholder: 'john@example.com',
       validation: { required: true, email: true },
+    },
+    {
+      key: 'phone',
+      label: 'Phone',
+      type: 'tel',
+      layout: 'half',
+      placeholder: '+1 555 0100',
+    },
+    {
+      key: 'birthDate',
+      label: 'Date of Birth',
+      type: 'date',
+      layout: 'half',
+      validation: { required: true },
     },
     {
       key: 'age',
@@ -64,21 +88,10 @@ export const onboardingSchema = defineFormSchema<OnboardingForm>({
       placeholder: 'https://example.com',
     },
     {
-      key: 'phone',
-      label: 'Phone',
-      type: 'tel',
-      placeholder: '+1 555 0100',
-    },
-    {
-      key: 'birthDate',
-      label: 'Date of Birth',
-      type: 'date',
-      validation: { required: true },
-    },
-    {
       key: 'accountType',
       label: 'Account Type',
       type: 'select',
+      section: 'Account',
       defaultValue: 'personal',
       options: [
         { label: 'Personal', value: 'personal' },
@@ -90,13 +103,56 @@ export const onboardingSchema = defineFormSchema<OnboardingForm>({
       label: 'Corporate Tax ID',
       type: 'text',
       placeholder: 'TX-999-000',
-      validation: { required: true },
+      validation: {
+        required: true,
+        messages: { required: 'Tax ID is required for corporate accounts.' },
+      },
       hideWhen: { field: 'accountType', notEquals: 'corporate' },
+    },
+    {
+      key: 'address',
+      label: 'Home Address',
+      type: 'group',
+      section: 'Address',
+      fields: [
+        {
+          key: 'street',
+          label: 'Street',
+          type: 'text',
+          validation: { required: true },
+        },
+        {
+          key: 'city',
+          label: 'City',
+          type: 'text',
+          layout: 'half',
+          validation: { required: true },
+        },
+        {
+          key: 'zip',
+          label: 'ZIP / Postal Code',
+          type: 'text',
+          layout: 'half',
+          validation: { required: true, pattern: '^[0-9A-Za-z\\-]{3,10}$' },
+        },
+        {
+          key: 'country',
+          label: 'Country',
+          type: 'select',
+          defaultValue: 'us',
+          options: [
+            { label: 'United States', value: 'us' },
+            { label: 'Canada', value: 'ca' },
+            { label: 'United Kingdom', value: 'uk' },
+          ],
+        },
+      ],
     },
     {
       key: 'preferredContact',
       label: 'Preferred Contact Method',
       type: 'radio',
+      section: 'Preferences',
       defaultValue: 'email',
       inline: true,
       options: [
@@ -119,52 +175,17 @@ export const onboardingSchema = defineFormSchema<OnboardingForm>({
     },
     {
       key: 'satisfaction',
-      label: 'How excited are you? (1–10)',
-      type: 'range',
-      defaultValue: 7,
-      validation: { min: 1, max: 10 },
-      step: 1,
-    },
-    {
-      key: 'address',
-      label: 'Home Address',
-      type: 'group',
-      fields: [
-        {
-          key: 'street',
-          label: 'Street',
-          type: 'text',
-          validation: { required: true },
-        },
-        {
-          key: 'city',
-          label: 'City',
-          type: 'text',
-          validation: { required: true },
-        },
-        {
-          key: 'zip',
-          label: 'ZIP / Postal Code',
-          type: 'text',
-          validation: { required: true, pattern: '^[0-9A-Za-z\\-]{3,10}$' },
-        },
-        {
-          key: 'country',
-          label: 'Country',
-          type: 'select',
-          defaultValue: 'us',
-          options: [
-            { label: 'United States', value: 'us' },
-            { label: 'Canada', value: 'ca' },
-            { label: 'United Kingdom', value: 'uk' },
-          ],
-        },
-      ],
+      label: 'How excited are you?',
+      type: 'star-rating',
+      defaultValue: 3,
+      hint: 'Custom field type registered via FieldTypeRegistry',
+      validation: { required: true },
     },
     {
       key: 'emergencyContacts',
       label: 'Emergency Contacts',
       type: 'array',
+      section: 'Emergency',
       itemLabel: 'Contact',
       addLabel: 'Add contact',
       minItems: 1,
@@ -174,12 +195,14 @@ export const onboardingSchema = defineFormSchema<OnboardingForm>({
           key: 'name',
           label: 'Name',
           type: 'text',
+          layout: 'half',
           validation: { required: true, minLength: 2 },
         },
         {
           key: 'phone',
           label: 'Phone',
           type: 'tel',
+          layout: 'half',
           validation: { required: true },
         },
         {
@@ -199,6 +222,7 @@ export const onboardingSchema = defineFormSchema<OnboardingForm>({
       key: 'bio',
       label: 'Short Biography',
       type: 'textarea',
+      section: 'About',
       placeholder: 'Tell us about yourself...',
       validation: { maxLength: 500 },
     },

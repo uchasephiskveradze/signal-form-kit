@@ -1,7 +1,7 @@
 <div class="fb-layout">
   <aside class="fb-panel fb-palette">
     <h3>Field Palette</h3>
-    <p class="fb-help">Click a field type to add it to the form.</p>
+    <p class="fb-help">Adding to: <strong>{{ addTargetLabel() }}</strong></p>
 
     <section>
       <h4>Inputs</h4>
@@ -58,30 +58,19 @@
       </label>
     </div>
 
-    <ul class="fb-field-list">
-      @for (field of schema().fields; track field.key; let i = $index) {
-        <li
-          class="fb-field-item"
-          [class.selected]="selectedPath() === field.key"
-          (click)="selectField(field.key)"
-        >
-          <span>{{ fieldSummary(field) }}</span>
-          <div class="fb-field-actions">
-            <button type="button" (click)="moveField(field.key, -1, $event)" [disabled]="i === 0">↑</button>
-            <button
-              type="button"
-              (click)="moveField(field.key, 1, $event)"
-              [disabled]="i === schema().fields.length - 1"
-            >
-              ↓
-            </button>
-            <button type="button" class="danger" (click)="removeField(field.key, $event)">×</button>
-          </div>
-        </li>
-      } @empty {
-        <li class="fb-empty">No fields yet — pick a type from the palette.</li>
-      }
-    </ul>
+    @if (schema().fields.length === 0) {
+      <p class="fb-empty">No fields yet — pick a type from the palette.</p>
+    } @else {
+      <sf-form-builder-tree
+        [fields]="schema().fields"
+        [selectedPath]="selectedPath()"
+        [addTargetPath]="addTargetPath()"
+        (selectField)="selectField($event)"
+        (setAddTarget)="setAddTarget($event)"
+        (removeField)="removeField($event)"
+        (moveField)="moveField($event)"
+      />
+    }
 
     @if (selectedField(); as sel) {
       <div class="fb-inspector">
@@ -95,6 +84,17 @@
           <input type="text" [value]="sel.label ?? ''" (change)="updateSelectedLabel($event)" />
         </label>
         @if (isLeafField(sel)) {
+          <label>
+            Section divider
+            <input type="text" [value]="sel.section ?? ''" (change)="updateSelectedSection($event)" placeholder="e.g. Contact" />
+          </label>
+          <label>
+            Layout
+            <select [value]="sel.layout ?? 'full'" (change)="updateSelectedLayout($event)">
+              <option value="full">Full width</option>
+              <option value="half">Half width (two columns)</option>
+            </select>
+          </label>
           <label>
             Placeholder
             <input type="text" [value]="sel.placeholder ?? ''" (change)="updateSelectedPlaceholder($event)" />
@@ -127,6 +127,11 @@
               />
             </label>
           }
+        }
+        @if (isGroupField(sel) || isArrayField(sel)) {
+          <p class="fb-inspector-note">
+            Use “Add inside …” or select this node to add nested fields to this {{ isArrayField(sel) ? 'array template' : 'group' }}.
+          </p>
         }
       </div>
     }

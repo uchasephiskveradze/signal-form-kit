@@ -1,5 +1,6 @@
 import {
   applyEach,
+  applyWhen,
   email,
   hidden,
   max,
@@ -18,21 +19,25 @@ import type {
   VisibilityRule,
 } from '../types/form-schema';
 import { isArrayField, isGroupField, isLeafField } from '../types/form-schema';
+import type { FieldTypeRegistry } from '../registry/field-type-registry';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SchemaPathRef = any;
 
-export function buildInitialModel<T extends object>(schema: FormSchema<T>): T {
+export function buildInitialModel<T extends object>(
+  schema: FormSchema<T>,
+  registry?: FieldTypeRegistry,
+): T {
   const model = {} as Record<string, unknown>;
 
   for (const field of schema.fields) {
-    model[field.key] = buildFieldValue(field);
+    model[field.key] = buildFieldValue(field, registry);
   }
 
   return model as T;
 }
 
-export function buildFieldValue(field: FieldNode): unknown {
+export function buildFieldValue(field: FieldNode, registry?: FieldTypeRegistry): unknown {
   if (field.defaultValue !== undefined) {
     return field.defaultValue;
   }
@@ -40,7 +45,7 @@ export function buildFieldValue(field: FieldNode): unknown {
   if (isGroupField(field)) {
     const group: Record<string, unknown> = {};
     for (const child of field.fields) {
-      group[child.key] = buildFieldValue(child);
+      group[child.key] = buildFieldValue(child, registry);
     }
     return group;
   }
@@ -48,24 +53,32 @@ export function buildFieldValue(field: FieldNode): unknown {
   if (isArrayField(field)) {
     const minItems = field.minItems ?? 0;
     if (minItems > 0) {
-      return Array.from({ length: minItems }, () => buildArrayItemValue(field));
+      return Array.from({ length: minItems }, () => buildArrayItemValue(field, registry));
     }
     return [];
   }
 
-  return defaultForType(field.type);
+  return defaultForType(field.type, registry);
 }
 
-export function buildArrayItemValue(field: ArrayFieldNode): Record<string, unknown> {
+export function buildArrayItemValue(
+  field: ArrayFieldNode,
+  registry?: FieldTypeRegistry,
+): Record<string, unknown> {
   const item: Record<string, unknown> = {};
   for (const child of field.itemFields) {
-    item[child.key] = buildFieldValue(child);
+    item[child.key] = buildFieldValue(child, registry);
   }
   return item;
 }
 
-function defaultForType(type: FieldType): unknown {
-  switch (type) {
+function defaultForType(type: FieldType | string, registry?: FieldTypeRegistry): unknown {
+  const customDefault = registry?.defaultValueFor(type);
+  if (customDefault !== undefined) {
+    return customDefault;
+  }
+
+  switch (type as FieldType) {
     case 'number':
     case 'range':
       return 0;
@@ -164,62 +177,132 @@ export function applyFieldRules(
 ): void {
   applyVisibility(field, path, getContext);
 
+  const conditional = !!(field.hideIf || field.hideWhen);
+  const bind = (target: SchemaPathRef) => bindLeafValidators(target, field);
+
+  if (conditional) {
+    applyWhen(path, () => !shouldHideField(field, getContext()), (childPath) => bind(childPath));
+  } else {
+    bind(path);
+  }
+}
+
+function bindLeafValidators(path: SchemaPathRef, field: LeafFieldNode): void {
   const validation = field.validation;
   if (!validation) return;
 
+  const msg = (kind: string) => validation.messages?.[kind];
+
   if (validation.required) {
-    required(path, validation.messages?.['required'] ? { message: validation.messages['required'] } : undefined);
+    required(path, msg('required') ? { message: msg('required') } : undefined);
   }
 
   if (validation.email && (field.type === 'email' || field.type === 'text')) {
-    email(path, validation.messages?.['email'] ? { message: validation.messages['email'] } : undefined);
+    email(path, msg('email') ? { message: msg('email') } : undefined);
   }
 
   if (validation.minLength != null) {
-    minLength(path, validation.minLength);
+    minLength(path, validation.minLength, msg('minLength') ? { message: msg('minLength') } : undefined);
   }
 
   if (validation.maxLength != null) {
-    maxLength(path, validation.maxLength);
+    maxLength(path, validation.maxLength, msg('maxLength') ? { message: msg('maxLength') } : undefined);
   }
 
   if (validation.min != null && (field.type === 'number' || field.type === 'range')) {
-    min(path, validation.min);
+    min(path, validation.min, msg('min') ? { message: msg('min') } : undefined);
   }
 
   if (validation.max != null && (field.type === 'number' || field.type === 'range')) {
-    max(path, validation.max);
+    max(path, validation.max, msg('max') ? { message: msg('max') } : undefined);
   }
 
   if (validation.pattern) {
-    pattern(path, new RegExp(validation.pattern));
+    pattern(path, new RegExp(validation.pattern), msg('pattern') ? { message: msg('pattern') } : undefined);
   }
 }
 
 export function findFieldByPath(fields: readonly FieldNode[], path: string): LeafFieldNode | undefined {
+  const node = findFieldNodeByPath(fields, path);
+  return node && isLeafField(node) ? node : undefined;
+}
+
+export function findFieldNodeByPath(fields: readonly FieldNode[], path: string): FieldNode | undefined {
+  if (!path) return undefined;
+
   const segments = path.split('.');
   let currentFields = fields;
   let current: FieldNode | undefined;
 
-  for (const segment of segments) {
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
     if (/^\d+$/.test(segment)) continue;
 
     current = currentFields.find((f) => f.key === segment);
     if (!current) return undefined;
 
-    if (isLeafField(current)) {
-      const remaining = segments.slice(segments.indexOf(segment) + 1).filter((s) => !/^\d+$/.test(s));
-      return remaining.length === 0 ? current : undefined;
-    }
+    const remaining = segments.slice(i + 1).filter((s) => !/^\d+$/.test(s));
+    if (remaining.length === 0) return current;
 
     if (isGroupField(current)) {
       currentFields = current.fields;
     } else if (isArrayField(current)) {
       currentFields = current.itemFields;
+    } else {
+      return undefined;
     }
   }
 
-  return current && isLeafField(current) ? current : undefined;
+  return current;
+}
+
+/** Collects labels for invalid leaf fields by walking the schema against the live form tree. */
+export function collectInvalidFieldLabels(
+  fields: readonly FieldNode[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tree: any,
+  getContext: () => Record<string, unknown>,
+  pathPrefix = '',
+): string[] {
+  const labels: string[] = [];
+
+  for (const field of fields) {
+    if (shouldHideField(field, getContext())) continue;
+
+    const path = pathPrefix ? `${pathPrefix}.${field.key}` : field.key;
+    const node = tree?.[field.key];
+
+    if (isGroupField(field)) {
+      labels.push(
+        ...collectInvalidFieldLabels(field.fields, node, () => {
+          const ctx = getContext();
+          return (ctx[field.key] as Record<string, unknown>) ?? {};
+        }, path),
+      );
+      continue;
+    }
+
+    if (isArrayField(field)) {
+      const items = getValueAtPath(getContext(), path);
+      if (Array.isArray(items)) {
+        items.forEach((item, index) => {
+          labels.push(
+            ...collectInvalidFieldLabels(field.itemFields, node?.[index], () => {
+              return (item as Record<string, unknown>) ?? {};
+            }, `${path}.${index}`),
+          );
+        });
+      }
+      continue;
+    }
+
+    const state = typeof node === 'function' ? node() : undefined;
+    if (state?.invalid?.()) {
+      labels.push(field.label ?? field.key);
+    }
+  }
+
+  return labels;
 }
 
 export function getValueAtPath(model: Record<string, unknown>, path: string): unknown {

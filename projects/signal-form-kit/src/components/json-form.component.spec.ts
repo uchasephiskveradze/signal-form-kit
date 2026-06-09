@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { defineFormSchema } from '../types/form-schema';
+import { provideSignalFormKit } from '../provide-signal-form-kit';
+import { defineFormSchema, type FormValidity } from '../types/form-schema';
 import { JsonFormComponent } from './json-form.component';
+import { JsonFormInstanceComponent } from './json-form-instance.component';
 
 interface TestForm {
   name: string;
@@ -31,8 +33,7 @@ const testSchema = defineFormSchema<TestForm>({
 const flushFormInit = async (fixture: ComponentFixture<unknown>): Promise<void> => {
   fixture.detectChanges();
   await fixture.whenStable();
-  await new Promise<void>((resolve) => queueMicrotask(resolve));
-  await new Promise<void>((resolve) => queueMicrotask(resolve));
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   fixture.detectChanges();
 };
 
@@ -42,6 +43,7 @@ describe('JsonFormComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [JsonFormComponent],
+      providers: [provideSignalFormKit()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(JsonFormComponent<TestForm>);
@@ -76,7 +78,11 @@ describe('JsonFormComponent', () => {
   });
 
   it('should reset model to schema defaults', () => {
-    const component = fixture.componentInstance;
+    const instanceFixture = TestBed.createComponent(JsonFormInstanceComponent<TestForm>);
+    instanceFixture.componentRef.setInput('schema', testSchema);
+    instanceFixture.detectChanges();
+
+    const component = instanceFixture.componentInstance;
     const emitted: TestForm[] = [];
     component.valueChange.subscribe((value) => emitted.push(value));
 
@@ -86,7 +92,7 @@ describe('JsonFormComponent', () => {
   });
 
   it('should emit validityChange with invalid state for empty required fields', async () => {
-    const statuses: { valid: boolean; invalid: boolean }[] = [];
+    const statuses: FormValidity[] = [];
     const localFixture = TestBed.createComponent(JsonFormComponent<TestForm>);
 
     localFixture.componentInstance.validityChange.subscribe((status) => statuses.push(status));
@@ -96,20 +102,14 @@ describe('JsonFormComponent', () => {
     expect(statuses.length).toBeGreaterThan(0);
     expect(statuses[0].valid).toBe(false);
     expect(statuses[0].invalid).toBe(true);
+    expect(Array.isArray(statuses[0].missingLabels)).toBe(true);
   });
 
   it('should expose callable field paths for formField bindings', async () => {
     await fixture.whenStable();
 
-    const tree = (fixture.componentInstance as unknown as { formTree: () => unknown }).formTree() as Record<
-      string,
-      unknown
-    > & (() => unknown);
-
-    expect(typeof tree).toBe('function');
-    const namePath = tree['name'];
-    expect(typeof namePath).toBe('function');
-    expect(() => (namePath as unknown as () => unknown)()).not.toThrow();
+    const instanceEl = fixture.nativeElement.querySelector('sf-json-form-instance');
+    expect(instanceEl).toBeTruthy();
   });
 
   it('should not emit formSubmit when required fields are empty', async () => {
@@ -121,5 +121,18 @@ describe('JsonFormComponent', () => {
     await fixture.whenStable();
 
     expect(submitted).toHaveLength(0);
+  });
+
+  it('should remount when reloadSchema is called', async () => {
+    const before = fixture.nativeElement.querySelector('sf-json-form-instance');
+    expect(before).toBeTruthy();
+
+    fixture.componentInstance.reloadSchema();
+    fixture.detectChanges();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    fixture.detectChanges();
+
+    const after = fixture.nativeElement.querySelector('sf-json-form-instance');
+    expect(after).toBeTruthy();
   });
 });

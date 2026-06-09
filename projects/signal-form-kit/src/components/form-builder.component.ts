@@ -11,12 +11,21 @@ import {
   isGroupField,
   isLeafField,
 } from '../types/form-schema';
+import {
+  addFieldToContainer,
+  containerLabel,
+  findFieldNodeByPath,
+  moveFieldAtPath,
+  removeFieldAtPath,
+  updateFieldAtPath,
+} from '../utils/builder-schema-utils';
+import { FormBuilderTreeComponent } from './form-builder-tree.component';
 import { JsonFormComponent } from './json-form.component';
 
 @Component({
   selector: 'sf-form-builder',
   standalone: true,
-  imports: [JsonFormComponent, JsonPipe],
+  imports: [FormBuilderTreeComponent, JsonFormComponent, JsonPipe],
   templateUrl: './form-builder.component.html',
   styleUrl: './form-builder.component.scss',
 })
@@ -36,14 +45,19 @@ export class FormBuilderComponent implements OnInit {
 
   protected readonly schema = signal<FormSchema>(defineFormSchema({ fields: [] }));
   protected readonly selectedPath = signal<string | null>(null);
+  protected readonly addTargetPath = signal('');
   protected readonly previewValue = signal<Record<string, unknown>>({});
   protected readonly previewValid = signal(false);
 
   protected readonly selectedField = computed(() => {
     const path = this.selectedPath();
     if (!path) return null;
-    return this.findField(this.schema().fields, path);
+    return findFieldNodeByPath(this.schema().fields, path) ?? null;
   });
+
+  protected readonly addTargetLabel = computed(() =>
+    containerLabel(this.schema().fields, this.addTargetPath()),
+  );
 
   protected readonly isLeafField = isLeafField;
   protected readonly isGroupField = isGroupField;
@@ -51,17 +65,18 @@ export class FormBuilderComponent implements OnInit {
 
   ngOnInit(): void {
     const initial = this.initialSchema();
-    this.schema.set(defineFormSchema({ ...initial, fields: [...initial.fields] }));
+    this.schema.set(defineFormSchema({ ...initial, fields: structuredClone(initial.fields) }));
     this.emitSchema();
   }
 
   protected addField(type: FieldType): void {
     const field = createDefaultField(type);
+    const target = this.addTargetPath();
     this.schema.update((s) => ({
       ...s,
-      fields: [...s.fields, field],
+      fields: addFieldToContainer(s.fields, target, field),
     }));
-    this.selectedPath.set(field.key);
+    this.selectedPath.set(target ? `${target}.${field.key}` : field.key);
     this.emitSchema();
   }
 
@@ -69,31 +84,29 @@ export class FormBuilderComponent implements OnInit {
     this.selectedPath.set(path);
   }
 
-  protected removeField(path: string, event: Event): void {
-    event.stopPropagation();
+  protected setAddTarget(path: string): void {
+    this.addTargetPath.set(path);
+  }
+
+  protected removeField(path: string): void {
     this.schema.update((s) => ({
       ...s,
-      fields: s.fields.filter((f) => f.key !== path),
+      fields: removeFieldAtPath(s.fields, path),
     }));
-    if (this.selectedPath() === path) {
+    if (this.selectedPath() === path || this.selectedPath()?.startsWith(`${path}.`)) {
       this.selectedPath.set(null);
+    }
+    if (this.addTargetPath() === path || this.addTargetPath().startsWith(`${path}.`)) {
+      this.addTargetPath.set('');
     }
     this.emitSchema();
   }
 
-  protected moveField(path: string, direction: -1 | 1, event: Event): void {
-    event.stopPropagation();
-    const index = this.schema().fields.findIndex((f) => f.key === path);
-    if (index < 0) return;
-
-    const target = index + direction;
-    if (target < 0 || target >= this.schema().fields.length) return;
-
-    this.schema.update((s) => {
-      const fields = [...s.fields];
-      [fields[index], fields[target]] = [fields[target], fields[index]];
-      return { ...s, fields };
-    });
+  protected moveField(event: { path: string; direction: -1 | 1 }): void {
+    this.schema.update((s) => ({
+      ...s,
+      fields: moveFieldAtPath(s.fields, event.path, event.direction),
+    }));
     this.emitSchema();
   }
 
@@ -105,7 +118,19 @@ export class FormBuilderComponent implements OnInit {
 
   protected updateSelectedKey(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
-    this.updateSelected({ key: value } as Partial<FieldNode>);
+    const path = this.selectedPath();
+    if (!path) return;
+
+    const oldKey = path.split('.').pop()!;
+    const parentPath = path.slice(0, -(oldKey.length + (path.includes('.') ? 1 : 0)));
+    const newPath = parentPath ? `${parentPath}.${value}` : value;
+
+    this.schema.update((s) => ({
+      ...s,
+      fields: updateFieldAtPath(s.fields, path, { key: value } as Partial<FieldNode>),
+    }));
+    this.selectedPath.set(newPath);
+    this.emitSchema();
   }
 
   protected updateSelectedLabel(event: Event): void {
@@ -116,6 +141,16 @@ export class FormBuilderComponent implements OnInit {
   protected updateSelectedPlaceholder(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.updateSelected({ placeholder: value });
+  }
+
+  protected updateSelectedSection(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.updateSelected({ section: value || undefined });
+  }
+
+  protected updateSelectedLayout(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as 'half' | 'full' | '';
+    this.updateSelected({ layout: value === 'half' ? 'half' : undefined });
   }
 
   protected updateSelectedValidation(key: string, event: Event): void {
@@ -142,10 +177,6 @@ export class FormBuilderComponent implements OnInit {
     void navigator.clipboard.writeText(json);
   }
 
-  protected fieldSummary(field: FieldNode): string {
-    return `${field.label ?? field.key} (${field.type})`;
-  }
-
   protected onPreviewValue(value: object): void {
     this.previewValue.set(value as Record<string, unknown>);
   }
@@ -164,14 +195,8 @@ export class FormBuilderComponent implements OnInit {
 
     this.schema.update((s) => ({
       ...s,
-      fields: s.fields.map((field) =>
-        field.key === path ? ({ ...field, ...patch } as FieldNode) : field,
-      ),
+      fields: updateFieldAtPath(s.fields, path, patch),
     }));
     this.emitSchema();
-  }
-
-  private findField(fields: readonly FieldNode[], path: string): FieldNode | null {
-    return fields.find((f) => f.key === path) ?? null;
   }
 }

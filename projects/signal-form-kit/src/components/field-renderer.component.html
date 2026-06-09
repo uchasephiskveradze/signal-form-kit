@@ -1,0 +1,115 @@
+@let f = fieldNode();
+@let tree = fieldTree();
+
+@if (isGroupField(f)) {
+  @let groupTree = childTree(tree, f.key);
+  @if (groupTree && !isHidden(groupTree)) {
+    @if (f.section) {
+      <div class="sf-section-divider">{{ f.section }}</div>
+    }
+    <fieldset class="sf-group sf-field-full">
+      @if (f.label) {
+        <legend>{{ f.label }}</legend>
+      }
+      <div class="sf-field-grid">
+        @for (child of f.fields; track child.key) {
+          <sf-field-renderer
+            [fieldNode]="child"
+            [fieldTree]="groupTree"
+            [path]="childPath(path(), f.key)"
+            [schemaFields]="schemaFields()"
+            [model]="groupModel(f)"
+            (addArrayItem)="addArrayItem.emit($event)"
+            (removeArrayItem)="removeArrayItem.emit($event)"
+          />
+        }
+      </div>
+    </fieldset>
+  }
+} @else if (isArrayField(f)) {
+  @let arrayTree = childTree(tree, f.key);
+  @if (arrayTree && !isHidden(arrayTree)) {
+    @if (f.section) {
+      <div class="sf-section-divider">{{ f.section }}</div>
+    }
+    <fieldset class="sf-array sf-field-full">
+      @if (f.label) {
+        <legend>{{ f.label }}</legend>
+      }
+      @for (index of arrayIndices(f); track index) {
+        <div class="sf-array-item">
+          <div class="sf-array-item-header">
+            <span>{{ f.itemLabel ?? 'Item' }} {{ index + 1 }}</span>
+            @if (canRemoveArrayItem(f)) {
+              <button type="button" class="sf-array-remove" (click)="onRemoveArrayItem(f, index)">
+                Remove
+              </button>
+            }
+          </div>
+          <div class="sf-field-grid">
+            @for (child of f.itemFields; track child.key) {
+              @let itemTree = arrayItemTree(arrayTree, index);
+              @if (itemTree) {
+                <sf-field-renderer
+                  [fieldNode]="child"
+                  [fieldTree]="itemTree"
+                  [path]="childPath(childPath(path(), f.key), index + '')"
+                  [schemaFields]="schemaFields()"
+                  [model]="arrayItemModel(f, index)"
+                  (addArrayItem)="addArrayItem.emit($event)"
+                  (removeArrayItem)="removeArrayItem.emit($event)"
+                />
+              }
+            }
+          </div>
+        </div>
+      }
+      @if (canAddArrayItem(f)) {
+        <button type="button" class="sf-array-add" (click)="onAddArrayItem(f)">
+          {{ f.addLabel ?? 'Add item' }}
+        </button>
+      }
+    </fieldset>
+  }
+} @else if (isLeafField(f)) {
+  @let fieldPath = childTree(tree, f.key);
+  @if (fieldPath && !isHidden(fieldPath)) {
+    @if (f.section) {
+      <div class="sf-section-divider">{{ f.section }}</div>
+    }
+    <div
+      class="sf-field"
+      [class.sf-field-half]="f.layout === 'half'"
+      [class.sf-field-full]="f.layout !== 'half'"
+      [class.sf-field-inline]="f.inline"
+    >
+      @if (isCustomType(f.type)) {
+        <sf-custom-field-outlet
+          [fieldDef]="f"
+          [fieldPath]="$any(fieldPath)"
+          [model]="model()"
+          [fieldId]="fieldId(f.key)"
+        />
+      } @else {
+        <sf-leaf-field
+          [fieldDef]="f"
+          [fieldPath]="$any(fieldPath)"
+          [model]="model()"
+          [fieldId]="fieldId(f.key)"
+        />
+      }
+
+      @if (f.hint) {
+        <span class="sf-hint">{{ f.hint }}</span>
+      }
+
+      @if (isInvalid(fieldPath) && isTouched(fieldPath)) {
+        <div class="sf-errors" role="alert">
+          @for (error of fieldErrors(fieldPath, fieldId(f.key)); track error.kind) {
+            <span>{{ error.message }}</span>
+          }
+        </div>
+      }
+    </div>
+  }
+}

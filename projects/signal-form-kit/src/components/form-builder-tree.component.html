@@ -1,0 +1,40 @@
+<ul class="fb-tree" [class.fb-tree-nested]="depth() > 0">
+  @for (field of fields(); track field.key; let i = $index) {
+    @let path = fieldPath(field.key);
+    <li class="fb-tree-node">
+      <div
+        class="fb-field-item"
+        [class.selected]="isSelected(path)"
+        [class.add-target]="isAddTarget(path) && (isGroupField(field) || isArrayField(field))"
+        [style.--fb-depth]="depth()"
+        (click)="onSelect(field, $event)"
+      >
+        <span>{{ fieldSummary(field) }}</span>
+        <div class="fb-field-actions">
+          <button type="button" (click)="onMove(path, -1, $event)" [disabled]="i === 0">↑</button>
+          <button type="button" (click)="onMove(path, 1, $event)" [disabled]="i === fields().length - 1">
+            ↓
+          </button>
+          <button type="button" class="danger" (click)="onRemove(path, $event)">×</button>
+        </div>
+      </div>
+
+      @if (isGroupField(field) || isArrayField(field)) {
+        <button type="button" class="fb-add-target-btn" (click)="onSetAddTarget(path, $event)">
+          + Add inside {{ field.label ?? field.key }}
+        </button>
+        <sf-form-builder-tree
+          [fields]="nestedFields(field)"
+          [containerPath]="path"
+          [depth]="depth() + 1"
+          [selectedPath]="selectedPath()"
+          [addTargetPath]="addTargetPath()"
+          (selectField)="selectField.emit($event)"
+          (setAddTarget)="setAddTarget.emit($event)"
+          (removeField)="removeField.emit($event)"
+          (moveField)="moveField.emit($event)"
+        />
+      }
+    </li>
+  }
+</ul>

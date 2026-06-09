@@ -21,7 +21,11 @@ export type ChoiceFieldType = 'select' | 'multiselect' | 'checkbox' | 'switch' |
 
 export type StructuralFieldType = 'group' | 'array';
 
-export type FieldType = InputFieldType | ChoiceFieldType | StructuralFieldType;
+/** Built-in leaf field types shipped with the library. */
+export type BuiltInLeafFieldType = InputFieldType | ChoiceFieldType;
+
+/** Built-in + custom (string) field types. Custom types are registered via FieldTypeRegistry. */
+export type FieldType = BuiltInLeafFieldType | StructuralFieldType | (string & {});
 
 export interface FieldValidation {
   required?: boolean;
@@ -55,10 +59,14 @@ interface FieldNodeBase {
   validation?: FieldValidation;
   hideWhen?: VisibilityRule | VisibilityRule[];
   hideIf?: (value: Record<string, unknown>) => boolean;
+  /** Renders a section divider before this field */
+  section?: string;
+  /** `half` = two-column layout on wide screens; default is full width */
+  layout?: 'half' | 'full';
 }
 
 export interface LeafFieldNode extends FieldNodeBase {
-  type: Exclude<FieldType, StructuralFieldType>;
+  type: BuiltInLeafFieldType | (string & {});
   options?: SelectOption[];
   /** For range inputs */
   step?: number;
@@ -106,6 +114,8 @@ export type TypedFormSchema<T extends object> = Omit<FormSchema<T>, 'fields'> & 
 export interface FormValidity {
   valid: boolean;
   invalid: boolean;
+  /** Human-readable labels for fields with validation errors */
+  missingLabels: string[];
 }
 
 export function isGroupField(field: FieldNode): field is GroupFieldNode {
@@ -118,6 +128,10 @@ export function isArrayField(field: FieldNode): field is ArrayFieldNode {
 
 export function isLeafField(field: FieldNode): field is LeafFieldNode {
   return field.type !== 'group' && field.type !== 'array';
+}
+
+export function isBuiltInLeafType(type: string): type is BuiltInLeafFieldType {
+  return FIELD_TYPE_CATALOG.some((entry) => entry.type === type && entry.category !== 'structural');
 }
 
 export function defineFormSchema(schema: FormSchema): FormSchema;

@@ -71,7 +71,31 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "include": ["**/*.spec.ts", "../projects/signal-form-kit/src/**/*.spec.ts"]
+          }
+        }
+      }
+    },
+    "signal-form-kit": {
+      "projectType": "library",
+      "root": "projects/signal-form-kit",
+      "sourceRoot": "projects/signal-form-kit/src",
+      "prefix": "sf",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:ng-packagr",
+          "options": {
+            "project": "projects/signal-form-kit/ng-package.json",
+            "tsConfig": "projects/signal-form-kit/tsconfig.lib.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/signal-form-kit/tsconfig.lib.prod.json"
+            }
+          },
+          "defaultConfiguration": "production"
         }
       }
     }

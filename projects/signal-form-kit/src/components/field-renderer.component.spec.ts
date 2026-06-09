@@ -1,28 +1,58 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { form } from '@angular/forms/signals';
-import { onboardingSchema, type OnboardingForm } from '../../app/schemas/onboarding.schema';
+import { defineFormSchema } from '../types/form-schema';
+import { provideSignalFormKit } from '../provide-signal-form-kit';
 import { buildInitialModel, configureSchemaFields } from '../utils/schema-utils';
 import { JsonFormComponent } from './json-form.component';
+import { JsonFormInstanceComponent } from './json-form-instance.component';
+
+interface NestedTestForm {
+  fullName: string;
+  satisfaction: number;
+  address: { street: string };
+  emergencyContacts: { name: string; phone: string }[];
+}
+
+const nestedTestSchema = defineFormSchema<NestedTestForm>({
+  fields: [
+    { key: 'fullName', label: 'Full Name', type: 'text', validation: { required: true } },
+    { key: 'satisfaction', label: 'Rating', type: 'number', defaultValue: 0 },
+    {
+      key: 'address',
+      type: 'group',
+      fields: [{ key: 'street', label: 'Street', type: 'text', validation: { required: true } }],
+    },
+    {
+      key: 'emergencyContacts',
+      type: 'array',
+      minItems: 1,
+      itemFields: [
+        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'phone', label: 'Phone', type: 'tel' },
+      ],
+    },
+  ],
+});
 
 const flushFormInit = async (fixture: ComponentFixture<unknown>): Promise<void> => {
   fixture.detectChanges();
   await fixture.whenStable();
-  await new Promise<void>((resolve) => queueMicrotask(resolve));
-  await new Promise<void>((resolve) => queueMicrotask(resolve));
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   fixture.detectChanges();
 };
 
 describe('FieldRendererComponent integration', () => {
-  let fixture: ComponentFixture<JsonFormComponent<OnboardingForm>>;
+  let fixture: ComponentFixture<JsonFormComponent<NestedTestForm>>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [JsonFormComponent],
+      providers: [provideSignalFormKit()],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(JsonFormComponent<OnboardingForm>);
-    fixture.componentRef.setInput('schema', onboardingSchema);
+    fixture = TestBed.createComponent(JsonFormComponent<NestedTestForm>);
+    fixture.componentRef.setInput('schema', nestedTestSchema);
     await flushFormInit(fixture);
   });
 
@@ -40,7 +70,11 @@ describe('FieldRendererComponent integration', () => {
   });
 
   it('should expose callable paths for nested and array fields', () => {
-    const tree = (fixture.componentInstance as unknown as { formTree: () => unknown }).formTree() as {
+    const instance = fixture.debugElement.query(
+      (de) => de.componentInstance instanceof JsonFormInstanceComponent,
+    )?.componentInstance as JsonFormInstanceComponent<NestedTestForm> | undefined;
+
+    const tree = (instance as unknown as { formTree: () => unknown }).formTree() as {
       [key: string]: unknown;
     } & (() => unknown);
 
@@ -58,9 +92,9 @@ describe('FieldRendererComponent integration', () => {
 describe('FieldRenderer path resolution', () => {
   it('resolves leaf paths from nested field trees', () => {
     TestBed.runInInjectionContext(() => {
-      const model = signal(buildInitialModel(onboardingSchema));
+      const model = signal(buildInitialModel(nestedTestSchema));
       const tree = form(model, (schemaPath) => {
-        configureSchemaFields(schemaPath, onboardingSchema.fields, () => model() as unknown as Record<string, unknown>);
+        configureSchemaFields(schemaPath, nestedTestSchema.fields, () => model() as unknown as Record<string, unknown>);
       });
 
       const addressTree = tree['address'] as unknown as { [key: string]: unknown };

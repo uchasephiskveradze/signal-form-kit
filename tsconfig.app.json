@@ -7,9 +7,11 @@
     "types": []
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "projects/signal-form-kit/src/**/*.ts"
   ],
   "exclude": [
-    "src/**/*.spec.ts"
+    "src/**/*.spec.ts",
+    "projects/signal-form-kit/src/**/*.spec.ts"
   ]
 }

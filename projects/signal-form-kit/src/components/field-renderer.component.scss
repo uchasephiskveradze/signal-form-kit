@@ -1,3 +1,50 @@
+:host {
+  display: contents;
+}
+
+.sf-section-divider {
+  grid-column: 1 / -1;
+  margin: 0.35rem 0 0;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--sf-border);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sf-muted);
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.sf-field-full {
+  grid-column: 1 / -1;
+}
+
+.sf-field-half {
+  grid-column: span 1;
+
+  @media (max-width: 640px) {
+    grid-column: 1 / -1;
+  }
+}
+
+.sf-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+
+  sf-field-renderer {
+    display: contents;
+  }
+}
+
 .sf-group,
 .sf-array {
   margin: 0;

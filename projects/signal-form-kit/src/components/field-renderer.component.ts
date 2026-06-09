@@ -1,17 +1,19 @@
-import { Component, forwardRef, input, output } from '@angular/core';
+import { Component, forwardRef, inject, input, output } from '@angular/core';
 import type { ArrayFieldNode, FieldNode, LeafFieldNode } from '../types/form-schema';
 import { isArrayField, isGroupField, isLeafField } from '../types/form-schema';
+import { injectFieldTypeRegistry } from '../registry/field-type-registry';
 import {
   findFieldByPath,
   getValueAtPath,
   VALIDATION_MESSAGES,
 } from '../utils/schema-utils';
+import { CustomFieldOutletComponent } from './custom-field-outlet.component';
 import { LeafFieldComponent } from './leaf-field.component';
 
 @Component({
   selector: 'sf-field-renderer',
   standalone: true,
-  imports: [LeafFieldComponent, forwardRef(() => FieldRendererComponent)],
+  imports: [CustomFieldOutletComponent, LeafFieldComponent, forwardRef(() => FieldRendererComponent)],
   templateUrl: './field-renderer.component.html',
   styleUrl: './field-renderer.component.scss',
 })
@@ -29,6 +31,12 @@ export class FieldRendererComponent {
   protected readonly isGroupField = isGroupField;
   protected readonly isArrayField = isArrayField;
   protected readonly isLeafField = isLeafField;
+
+  private readonly fieldRegistry = injectFieldTypeRegistry();
+
+  protected isCustomType(type: string): boolean {
+    return this.fieldRegistry.isCustomType(type);
+  }
 
   protected childPath(parentPath: string, key: string): string {
     return parentPath ? `${parentPath}.${key}` : key;

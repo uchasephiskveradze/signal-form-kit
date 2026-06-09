@@ -1,4 +1,4 @@
-import { createDefaultField, createFormSchemaFromJson, defineFormSchema, FIELD_TYPE_CATALOG } from './form-schema';
+import { createDefaultField, createFormSchemaFromJson, defineFormSchema, FIELD_TYPE_CATALOG, isArrayField, isGroupField } from './form-schema';
 
 describe('form-schema', () => {
   describe('defineFormSchema', () => {
@@ -48,8 +48,8 @@ describe('form-schema', () => {
 
       expect(group.type).toBe('group');
       expect(array.type).toBe('array');
-      if (group.type === 'group') expect(group.fields.length).toBeGreaterThan(0);
-      if (array.type === 'array') expect(array.itemFields.length).toBeGreaterThan(0);
+      expect(isGroupField(group) && group.fields.length).toBeGreaterThan(0);
+      expect(isArrayField(array) && array.itemFields.length).toBeGreaterThan(0);
     });
 
     it('catalog covers 24 field types', () => {

@@ -1,0 +1,42 @@
+@if (formTree(); as form) {
+  <form class="sf-form" (submit)="onSubmit($event)">
+    @if (schema().title) {
+      <h2 class="sf-form-title">{{ schema().title }}</h2>
+    }
+    @if (schema().description) {
+      <p class="sf-form-description">{{ schema().description }}</p>
+    }
+
+    <div class="sf-form-body">
+      @for (fieldDef of schema().fields; track fieldDef.key) {
+        <sf-field-renderer
+          [fieldNode]="fieldDef"
+          [fieldTree]="form"
+          [path]="''"
+          [schemaFields]="schema().fields"
+          [model]="formModel()"
+          (addArrayItem)="onAddArrayItem($event)"
+          (removeArrayItem)="onRemoveArrayItem($event)"
+        />
+      }
+    </div>
+
+    <div class="sf-actions">
+      @if (!formValid() && (submitAttempted() || disableSubmitWhenInvalid())) {
+        <p class="sf-validation-hint" role="status">{{ validationHint() }}</p>
+      }
+      <button
+        type="submit"
+        class="sf-submit"
+        [disabled]="submitting() || (disableSubmitWhenInvalid() && !formValid())"
+      >
+        @if (submitting()) {
+          <span class="sf-spinner"></span>
+          {{ submittingLabel() }}
+        } @else {
+          {{ schema().submitLabel ?? 'Submit' }}
+        }
+      </button>
+    </div>
+  </form>
+}

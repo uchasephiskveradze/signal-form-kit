@@ -28,12 +28,28 @@
       <section class="panel form-panel">
         <div class="panel-header">
           <h2>{{ activeSchema()?.title ?? 'Form' }}</h2>
-          <span class="badge" [class.valid]="formValid()" [class.invalid]="!formValid()">
-            {{ formValid() ? 'VALID' : 'INVALID' }}
-          </span>
+          @if (!jsonLoading()) {
+            <span class="badge" [class.valid]="formValid()" [class.invalid]="!formValid()">
+              {{ formValid() ? 'VALID' : 'INVALID' }}
+            </span>
+          }
         </div>
 
-        @if (activeSchema(); as schema) {
+        @if (jsonLoading()) {
+          <div class="form-skeleton" aria-busy="true" aria-label="Loading JSON schema">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line skeleton-text"></div>
+            @for (row of [1, 2, 3, 4]; track row) {
+              <div class="skeleton-row">
+                <div class="skeleton-field"></div>
+                <div class="skeleton-field"></div>
+              </div>
+            }
+            <div class="skeleton-button"></div>
+          </div>
+        } @else if (jsonLoadError(); as error) {
+          <div class="load-error" role="alert">{{ error }}</div>
+        } @else if (activeSchema(); as schema) {
           <app-onboarding-form
             [schema]="schema"
             (valueChange)="onValueChange($event)"
@@ -61,7 +77,11 @@
             Form submitted successfully. See payload below.
           </div>
           <h3 class="section-label">Last Typed Submit</h3>
-          <div class="json-viewer submitted">
+          <div
+            #submittedPanel
+            class="json-viewer submitted"
+            [class.highlight]="submitHighlight()"
+          >
             <pre><code>{{ submitted | json }}</code></pre>
           </div>
         }

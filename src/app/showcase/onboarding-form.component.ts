@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { JsonFormComponent, type FormSchema, type FormValidity } from '../../lib';
+import { JsonFormComponent, type FormSchema, type FormValidity } from '@signal-form-kit/core';
 import type { OnboardingForm } from '../schemas/onboarding.schema';
 
 /**

@@ -1,5 +1,5 @@
 import { JsonPipe } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, ElementRef, signal, viewChild } from '@angular/core';
 import {
   createDefaultField,
   createFormSchemaFromJson,
@@ -7,7 +7,7 @@ import {
   FormBuilderComponent,
   type FormSchema,
   type FormValidity,
-} from '../../lib';
+} from '@signal-form-kit/core';
 import { type OnboardingForm, onboardingSchema } from '../schemas/onboarding.schema';
 import { OnboardingFormComponent } from './onboarding-form.component';
 
@@ -24,6 +24,8 @@ export class ShowcaseComponent {
   protected readonly mode = signal<ShowcaseMode>('typescript');
   protected readonly onboardingSchema = onboardingSchema;
   protected readonly jsonSchema = signal<FormSchema<OnboardingForm> | null>(null);
+  protected readonly jsonLoading = signal(false);
+  protected readonly jsonLoadError = signal<string | null>(null);
   protected readonly builderSchema = signal<FormSchema>(defineFormSchema({ fields: [] }));
   protected readonly activeSchema = computed<FormSchema<OnboardingForm> | null>(() => {
     const current = this.mode();
@@ -34,8 +36,11 @@ export class ShowcaseComponent {
   protected readonly liveValue = signal<OnboardingForm | Record<string, unknown>>({} as OnboardingForm);
   protected readonly formValid = signal(false);
   protected readonly lastSubmitted = signal<OnboardingForm | Record<string, unknown> | null>(null);
+  protected readonly submitHighlight = signal(false);
 
-  protected readonly usageSnippet = `import { defineFormSchema, JsonFormComponent, FormBuilderComponent } from './lib';
+  private readonly submittedPanel = viewChild<ElementRef<HTMLElement>>('submittedPanel');
+
+  protected readonly usageSnippet = `import { defineFormSchema, JsonFormComponent, FormBuilderComponent } from '@signal-form-kit/core';
 
 const schema = defineFormSchema<User>({ fields: [...] });
 
@@ -52,6 +57,12 @@ const schema = defineFormSchema<User>({ fields: [...] });
 
   protected onSubmit(value: OnboardingForm): void {
     this.lastSubmitted.set(value);
+    this.submitHighlight.set(true);
+    setTimeout(() => this.submitHighlight.set(false), 3200);
+
+    requestAnimationFrame(() => {
+      this.submittedPanel()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
   }
 
   protected onBuilderSchemaChange(schema: FormSchema): void {
@@ -59,12 +70,24 @@ const schema = defineFormSchema<User>({ fields: [...] });
   }
 
   protected async loadJsonSchema(): Promise<void> {
-    if (!this.jsonSchema()) {
+    this.mode.set('json');
+    if (this.jsonSchema() || this.jsonLoading()) return;
+
+    this.jsonLoading.set(true);
+    this.jsonLoadError.set(null);
+
+    try {
       const response = await fetch('/schemas/onboarding.json');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       const json = await response.json();
       this.jsonSchema.set(createFormSchemaFromJson<OnboardingForm>(json));
+    } catch {
+      this.jsonLoadError.set('Could not load onboarding.json. Check that the file exists in public/schemas/.');
+    } finally {
+      this.jsonLoading.set(false);
     }
-    this.mode.set('json');
   }
 
   protected openBuilder(): void {

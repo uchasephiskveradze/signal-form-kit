@@ -39,7 +39,7 @@ Open [http://localhost:4200](http://localhost:4200). The showcase has three tabs
 ### TypeScript schema (type-safe)
 
 ```typescript
-import { defineFormSchema, JsonFormComponent } from './lib';
+import { defineFormSchema, JsonFormComponent } from '@signal-form-kit/core';
 
 interface User {
   fullName: string;
@@ -91,7 +91,7 @@ export class SignUpComponent {
 ### JSON schema (runtime)
 
 ```typescript
-import { createFormSchemaFromJson, JsonFormComponent } from './lib';
+import { createFormSchemaFromJson, JsonFormComponent } from '@signal-form-kit/core';
 
 const schema = createFormSchemaFromJson<OnboardingForm>(
   await fetch('/schemas/onboarding.json').then((r) => r.json()),
@@ -131,21 +131,40 @@ The builder provides a field-type palette, property inspector, reorder, and live
 ## Project structure
 
 ```
-src/lib/                              # Reusable form engine
-  types/form-schema.ts                # Schema types, 24 field types, FIELD_TYPE_CATALOG
-  utils/schema-utils.ts               # Recursive model build, validators, visibility
-  components/
-    json-form.component.*             # Form root — schema in, typed events out
-    field-renderer.component.*        # Recursive groups / arrays / leaves
-    leaf-field.component.*            # Native control bindings ([formField])
-    form-builder.component.*          # Visual schema editor
+projects/signal-form-kit/             # Publishable library (@signal-form-kit/core)
+  src/
+    types/form-schema.ts              # Schema types, built-in + custom field types
+    registry/field-type-registry.ts   # FieldTypeRegistry + custom renderers
+    utils/schema-utils.ts             # Model build, applyWhen validation, visibility
+    components/
+      json-form.component.*           # Remount wrapper (formKey / reloadSchema)
+      json-form-instance.component.*  # Per-mount form instance
+      field-renderer.component.*      # Recursive groups / arrays / leaves / custom
+      leaf-field.component.*          # Built-in control bindings
+      form-builder.component.*        # Visual schema editor
 
-src/app/
-  schemas/onboarding.schema.ts        # Full demo schema (groups + arrays)
-  showcase/                           # Interactive demo app
+src/app/                              # Thin showcase demo app
+  schemas/onboarding.schema.ts
+  showcase/                           # Demo + StarRatingFieldComponent (custom type)
 
-public/schemas/onboarding.json        # JSON mirror of onboarding schema
+public/schemas/onboarding.json
 ```
+
+## Publishing the library
+
+Org: [@signal-form-kit on npm](https://www.npmjs.com/org/signal-form-kit) · publish as **`uchasepho03`**
+
+```bash
+npm login                              # username: uchasepho03
+npm run publish:lib:dry-run            # verify tarball without uploading
+npm run publish:lib                    # test → production build → npm publish
+```
+
+After publish, the package will appear at [npmjs.com/package/@signal-form-kit/core](https://www.npmjs.com/package/@signal-form-kit/core).
+
+`build:lib:prod` compiles with **partial** compilation mode (required for npm). Output: `dist/signal-form-kit/`.
+
+Package name: `@signal-form-kit/core` with peer dependencies on `@angular/core`, `@angular/common`, and `@angular/forms`.
 
 ## API
 
@@ -159,17 +178,59 @@ public/schemas/onboarding.json        # JSON mirror of onboarding schema
 | `createDefaultField()` | Factory for builder / programmatic schemas |
 | `FIELD_TYPE_CATALOG` | Metadata for all 24 supported field types |
 | `buildInitialModel()` | Build default model from schema (groups + arrays) |
-| `shouldHideField()` | Evaluate conditional visibility |
+| `provideSignalFormKit()` | App providers — field type registry, etc. |
+| `FieldTypeRegistry` | Register custom field types + renderer components |
+| `reloadSchema()` | Public method on `<sf-json-form>` to remount the form |
 
 ### `JsonFormComponent` inputs / outputs
 
 | Name | Type | Description |
 |------|------|-------------|
 | `[schema]` | `FormSchema<T>` | Required. Field definitions and metadata |
+| `[formKey]` | `string \| number` | Bump to remount form (default `0`) |
 | `[submittingLabel]` | `string` | Button label while submitting (default: `"Submitting..."`) |
 | `(formSubmit)` | `T` | Emits typed value after valid submit |
 | `(valueChange)` | `T` | Emits on every model change |
-| `(validityChange)` | `FormValidity` | Emits `{ valid, invalid }` when form status changes |
+| `(validityChange)` | `FormValidity` | Emits `{ valid, invalid, missingLabels }` |
+
+### Custom field types
+
+```typescript
+import { createDefaultFieldTypeRegistry, provideSignalFormKit } from '@signal-form-kit/core';
+
+const registry = createDefaultFieldTypeRegistry().register({
+  type: 'star-rating',
+  label: 'Star Rating',
+  defaultValue: 0,
+  component: StarRatingFieldComponent, // must accept fieldDef, fieldPath, model, fieldId
+});
+
+providers: [provideSignalFormKit({ registry })];
+```
+
+Use `type: 'star-rating'` (or any registered name) in schema JSON/TS. Built-in types still render via `LeafFieldComponent`.
+
+### Validation messages & conditional rules
+
+```typescript
+{
+  key: 'fullName',
+  validation: {
+    required: true,
+    messages: { required: 'Please enter your full name.' },
+  },
+},
+{
+  key: 'taxId',
+  hideWhen: { field: 'accountType', notEquals: 'corporate' },
+  validation: {
+    required: true,
+    messages: { required: 'Tax ID is required for corporate accounts.' },
+  },
+},
+```
+
+Fields with `hideWhen` / `hideIf` wrap validators in Signal Forms `applyWhen` so required rules only apply when visible.
 
 ### Field types
 
@@ -185,13 +246,18 @@ public/schemas/onboarding.json        # JSON mirror of onboarding schema
 |---------|-------------|
 | `npm start` | Dev server |
 | `npm run build` | Production build |
-| `npm test` | Unit tests (Vitest, 26 specs) |
+| `npm run build:lib` | Library build (production / partial compilation by default) |
+| `npm run build:lib:prod` | Same as `build:lib` (explicit production config) |
+| `npm run publish:lib` | Test, build, and publish `@signal-form-kit/core` to npm |
+| `npm test` | Unit tests (Vitest, 38 specs) |
+| `npm run e2e` | Playwright smoke tests (showcase flow) |
 
 ## Tech stack
 
 - Angular 21 (standalone components, signals)
 - Signal Forms (`@angular/forms/signals`)
 - Vitest + jsdom
+- Playwright (E2E)
 - SCSS
 
 ## License
