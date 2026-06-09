@@ -1,59 +1,157 @@
-# SignalFormShowcase
+# Signal Form Showcase
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.3.
+A schema-driven form engine for **Angular 21** built on [Signal Forms](https://angular.dev/guide/forms/signals). Pass a JSON schema or a typed TypeScript config — get a fully validated form with typed outputs and zero boilerplate.
 
-## Development server
+## Why this exists
 
-To start a local development server, run:
+Reactive Forms are powerful but verbose. Every enterprise app repeats the same patterns: define controls, wire validators, bind templates, handle errors. This library generates the entire form from metadata so you focus on the schema, not the plumbing.
 
-```bash
-ng serve
-```
+## Features
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+- **JSON or TypeScript schemas** — same shape, two input modes
+- **Typed outputs** — `defineFormSchema<T>()` ties field keys to your model interface
+- **Signal Forms native** — fine-grained reactivity, `hidden()` for conditional fields that don't block validation
+- **Built-in validators** — required, email, min/max, minLength/maxLength, pattern
+- **Conditional fields** — `hideWhen` (JSON-serializable) or `hideIf` (TypeScript callback)
+- **Live value stream** — `(valueChange)` for debugging and side effects
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Quick start
 
 ```bash
-ng generate --help
+npm install
+npm start
 ```
 
-## Building
+Open [http://localhost:4200](http://localhost:4200).
 
-To build the project run:
+## Usage
 
-```bash
-ng build
+### TypeScript schema (type-safe)
+
+```typescript
+import { defineFormSchema, JsonFormComponent } from './lib';
+
+interface User {
+  fullName: string;
+  email: string;
+  age: number;
+}
+
+const schema = defineFormSchema<User>({
+  title: 'Sign Up',
+  submitLabel: 'Create Account',
+  fields: [
+    {
+      key: 'fullName',
+      label: 'Full Name',
+      type: 'text',
+      validation: { required: true, minLength: 3 },
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      type: 'email',
+      validation: { required: true, email: true },
+    },
+    {
+      key: 'age',
+      label: 'Age',
+      type: 'number',
+      defaultValue: 18,
+      validation: { required: true, min: 18 },
+    },
+  ],
+});
+
+@Component({
+  imports: [JsonFormComponent],
+  template: `<sf-json-form [schema]="schema" (formSubmit)="onSubmit($event)" />`,
+})
+export class SignUpComponent {
+  schema = schema;
+
+  onSubmit(value: User) {
+    console.log(value); // fully typed
+  }
+}
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+### JSON schema (runtime)
 
-## Running unit tests
+```typescript
+import { createFormSchemaFromJson, JsonFormComponent } from './lib';
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
+const schema = createFormSchemaFromJson<User>(
+  await fetch('/schemas/user.json').then((r) => r.json()),
+);
 ```
 
-## Running end-to-end tests
+Example JSON with conditional field:
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
+```json
+{
+  "fields": [
+    { "key": "accountType", "label": "Type", "type": "select", "defaultValue": "personal", "options": [...] },
+    {
+      "key": "taxId",
+      "label": "Tax ID",
+      "type": "text",
+      "validation": { "required": true },
+      "hideWhen": { "field": "accountType", "notEquals": "corporate" }
+    }
+  ]
+}
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Project structure
 
-## Additional Resources
+```
+src/lib/                      # Reusable form engine
+  types/form-schema.ts        # Schema types + defineFormSchema()
+  utils/schema-utils.ts       # Model builder, visibility, validators
+  components/json-form.component.*
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+src/app/
+  schemas/                    # Example typed schemas
+  showcase/                   # Interactive demo
+
+public/schemas/               # Example JSON schemas
+```
+
+## API
+
+| Export | Description |
+|--------|-------------|
+| `JsonFormComponent` | `<sf-json-form>` — renders a form from schema |
+| `defineFormSchema<T>()` | Type-safe schema builder |
+| `createFormSchemaFromJson<T>()` | Parse JSON string or object |
+| `buildInitialModel()` | Build default model from schema |
+| `shouldHideField()` | Evaluate conditional visibility |
+
+### Component inputs / outputs
+
+| Name | Type | Description |
+|------|------|-------------|
+| `[schema]` | `FormSchema<T>` | Required. Field definitions and metadata |
+| `[submittingLabel]` | `string` | Button label while submitting |
+| `(formSubmit)` | `T` | Emits typed value after valid submit |
+| `(valueChange)` | `T` | Emits on every model change |
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm start` | Dev server |
+| `npm run build` | Production build |
+| `npm test` | Unit tests (Vitest) |
+
+## Tech stack
+
+- Angular 21 (standalone components, signals)
+- Signal Forms (`@angular/forms/signals`)
+- Vitest + jsdom
+- SCSS
+
+## License
+
+MIT

@@ -1,0 +1,76 @@
+<div class="showcase">
+  <header class="showcase-header">
+    <h1>Reactive Forms Supercharger</h1>
+    <p>
+      Pass a JSON schema or TypeScript interface — get a fully validated, typed form with zero
+      boilerplate.
+    </p>
+    <div class="source-toggle">
+      <button
+        type="button"
+        [class.active]="source() === 'typescript'"
+        (click)="source.set('typescript')"
+      >
+        TypeScript Schema
+      </button>
+      <button
+        type="button"
+        [class.active]="source() === 'json'"
+        (click)="loadJsonSchema()"
+      >
+        JSON File
+      </button>
+    </div>
+  </header>
+
+  <main class="showcase-layout">
+    <section class="panel form-panel">
+      <div class="panel-header">
+        <h2>{{ (source() === 'typescript' ? onboardingSchema : jsonSchema())?.title ?? 'Form' }}</h2>
+        <span class="badge" [class.valid]="formValid()" [class.invalid]="!formValid()">
+          {{ formValid() ? 'VALID' : 'INVALID' }}
+        </span>
+      </div>
+
+      @if (source() === 'typescript') {
+        <sf-json-form
+          [schema]="onboardingSchema"
+          (valueChange)="onValueChange($any($event))"
+          (formSubmit)="onSubmit($any($event))"
+        />
+      } @else {
+        <sf-json-form
+          [schema]="jsonSchema()!"
+          (valueChange)="onValueChange($any($event))"
+          (formSubmit)="onSubmit($any($event))"
+        />
+      }
+    </section>
+
+    <section class="panel state-panel">
+      <div class="panel-header">
+        <h2>Live Output</h2>
+        <button type="button" class="reset-btn" (click)="lastSubmitted.set(null)">
+          Clear Submit
+        </button>
+      </div>
+
+      <h3 class="section-label">Form Model</h3>
+      <div class="json-viewer">
+        <pre><code>{{ liveValue() | json }}</code></pre>
+      </div>
+
+      @if (lastSubmitted(); as submitted) {
+        <h3 class="section-label">Last Typed Submit</h3>
+        <div class="json-viewer submitted">
+          <pre><code>{{ submitted | json }}</code></pre>
+        </div>
+      }
+
+      <h3 class="section-label">Usage</h3>
+      <div class="code-snippet">
+        <pre><code>{{ usageSnippet }}</code></pre>
+      </div>
+    </section>
+  </main>
+</div>

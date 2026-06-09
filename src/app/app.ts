@@ -1,11 +1,11 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
+import { ShowcaseComponent } from './showcase/showcase.component';
 
 @Component({
   selector: 'app-root',
-  imports: [],
+  standalone: true,
+  imports: [ShowcaseComponent],
   templateUrl: './app.html',
-  styleUrl: './app.scss'
+  styleUrl: './app.scss',
 })
-export class App {
-  protected readonly title = signal('signal-form-showcase');
-}
+export class App {}
