@@ -7,58 +7,16 @@
       <p class="sf-form-description">{{ schema().description }}</p>
     }
 
-    @for (field of schema().fields; track field.key) {
-      @if (!isHidden(form, field.key)) {
-        <div class="sf-field">
-          <label [for]="field.key">{{ field.label }}</label>
-
-          @switch (field.type) {
-            @case ('select') {
-              <select [id]="field.key" [formField]="form[field.key]">
-                @for (opt of field.options ?? []; track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
-                }
-              </select>
-            }
-            @case ('textarea') {
-              <textarea
-                [id]="field.key"
-                [placeholder]="field.placeholder ?? ''"
-                [formField]="form[field.key]"
-              ></textarea>
-            }
-            @case ('number') {
-              <input
-                type="number"
-                [id]="field.key"
-                [placeholder]="field.placeholder ?? ''"
-                [formField]="form[field.key]"
-              />
-            }
-            @default {
-              <input
-                [type]="field.type === 'password' ? 'password' : field.type === 'email' ? 'email' : 'text'"
-                [id]="field.key"
-                [placeholder]="field.placeholder ?? ''"
-                [formField]="form[field.key]"
-                [attr.aria-invalid]="isInvalid(form, field.key)"
-              />
-            }
-          }
-
-          @if (field.hint) {
-            <span class="sf-hint">{{ field.hint }}</span>
-          }
-
-          @if (isInvalid(form, field.key) && isTouched(form, field.key)) {
-            <div class="sf-errors" role="alert">
-              @for (error of fieldErrors(form, field.key); track error.kind) {
-                <span>{{ error.message }}</span>
-              }
-            </div>
-          }
-        </div>
-      }
+    @for (fieldDef of schema().fields; track formRevision() + ':' + fieldDef.key) {
+      <sf-field-renderer
+        [fieldNode]="fieldDef"
+        [fieldTree]="form"
+        [path]="''"
+        [schemaFields]="schema().fields"
+        [model]="formModel()"
+        (addArrayItem)="onAddArrayItem($event)"
+        (removeArrayItem)="onRemoveArrayItem($event)"
+      />
     }
 
     <div class="sf-actions">
@@ -72,4 +30,9 @@
       </button>
     </div>
   </form>
+} @else {
+  <div class="sf-form-loading" aria-live="polite">
+    <span class="sf-form-loading-spinner"></span>
+    <span>Preparing form…</span>
+  </div>
 }

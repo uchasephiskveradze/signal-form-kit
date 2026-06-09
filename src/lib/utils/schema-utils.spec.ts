@@ -50,6 +50,31 @@ describe('schema-utils', () => {
       expect(model.name).toBe('');
       expect(model.age).toBe(0);
     });
+
+    it('builds nested groups and arrays', () => {
+      const schema = defineFormSchema({
+        fields: [
+          {
+            key: 'profile',
+            type: 'group',
+            fields: [{ key: 'nickname', label: 'Nickname', type: 'text' }],
+          },
+          {
+            key: 'tags',
+            type: 'array',
+            itemFields: [{ key: 'label', label: 'Label', type: 'text' }],
+            minItems: 1,
+          },
+        ],
+      });
+
+      const model = buildInitialModel(schema);
+
+      expect(model).toEqual({
+        profile: { nickname: '' },
+        tags: [{ label: '' }],
+      });
+    });
   });
 
   describe('shouldHideField', () => {
@@ -85,7 +110,7 @@ describe('schema-utils', () => {
     it('prefers hideIf over hideWhen', () => {
       const field = {
         ...taxIdField,
-        hideIf: (value: TestModel) => value.age < 18,
+        hideIf: (value: Record<string, unknown>) => (value['age'] as number) < 18,
       };
 
       expect(shouldHideField(field, { name: '', age: 16, role: 'corporate', taxId: '' })).toBe(

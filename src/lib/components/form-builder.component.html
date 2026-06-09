@@ -1,0 +1,152 @@
+<div class="fb-layout">
+  <aside class="fb-panel fb-palette">
+    <h3>Field Palette</h3>
+    <p class="fb-help">Click a field type to add it to the form.</p>
+
+    <section>
+      <h4>Inputs</h4>
+      <div class="fb-palette-grid">
+        @for (item of inputTypes; track item.type) {
+          <button type="button" class="fb-palette-btn" (click)="addField(item.type)" [title]="item.description">
+            {{ item.label }}
+          </button>
+        }
+      </div>
+    </section>
+
+    <section>
+      <h4>Choices</h4>
+      <div class="fb-palette-grid">
+        @for (item of choiceTypes; track item.type) {
+          <button type="button" class="fb-palette-btn" (click)="addField(item.type)" [title]="item.description">
+            {{ item.label }}
+          </button>
+        }
+      </div>
+    </section>
+
+    <section>
+      <h4>Structure</h4>
+      <div class="fb-palette-grid">
+        @for (item of structuralTypes; track item.type) {
+          <button type="button" class="fb-palette-btn fb-structural" (click)="addField(item.type)" [title]="item.description">
+            {{ item.label }}
+          </button>
+        }
+      </div>
+    </section>
+  </aside>
+
+  <section class="fb-panel fb-canvas">
+    <div class="fb-canvas-header">
+      <h3>Form Structure</h3>
+      <button type="button" class="fb-export" (click)="exportJson()">Copy JSON</button>
+    </div>
+
+    <div class="fb-meta">
+      <label>
+        Title
+        <input type="text" [value]="schema().title ?? ''" (change)="updateFormMeta('title', $event)" />
+      </label>
+      <label>
+        Description
+        <input type="text" [value]="schema().description ?? ''" (change)="updateFormMeta('description', $event)" />
+      </label>
+      <label>
+        Submit label
+        <input type="text" [value]="schema().submitLabel ?? ''" (change)="updateFormMeta('submitLabel', $event)" />
+      </label>
+    </div>
+
+    <ul class="fb-field-list">
+      @for (field of schema().fields; track field.key; let i = $index) {
+        <li
+          class="fb-field-item"
+          [class.selected]="selectedPath() === field.key"
+          (click)="selectField(field.key)"
+        >
+          <span>{{ fieldSummary(field) }}</span>
+          <div class="fb-field-actions">
+            <button type="button" (click)="moveField(field.key, -1, $event)" [disabled]="i === 0">↑</button>
+            <button
+              type="button"
+              (click)="moveField(field.key, 1, $event)"
+              [disabled]="i === schema().fields.length - 1"
+            >
+              ↓
+            </button>
+            <button type="button" class="danger" (click)="removeField(field.key, $event)">×</button>
+          </div>
+        </li>
+      } @empty {
+        <li class="fb-empty">No fields yet — pick a type from the palette.</li>
+      }
+    </ul>
+
+    @if (selectedField(); as sel) {
+      <div class="fb-inspector">
+        <h4>Edit: {{ sel.label ?? sel.key }}</h4>
+        <label>
+          Key
+          <input type="text" [value]="sel.key" (change)="updateSelectedKey($event)" />
+        </label>
+        <label>
+          Label
+          <input type="text" [value]="sel.label ?? ''" (change)="updateSelectedLabel($event)" />
+        </label>
+        @if (isLeafField(sel)) {
+          <label>
+            Placeholder
+            <input type="text" [value]="sel.placeholder ?? ''" (change)="updateSelectedPlaceholder($event)" />
+          </label>
+          <label class="fb-checkbox">
+            <input
+              type="checkbox"
+              [checked]="sel.validation?.required ?? false"
+              (change)="updateSelectedValidation('required', $event)"
+            />
+            Required
+          </label>
+          @if (sel.type === 'email' || sel.type === 'text') {
+            <label class="fb-checkbox">
+              <input
+                type="checkbox"
+                [checked]="sel.validation?.email ?? false"
+                (change)="updateSelectedValidation('email', $event)"
+              />
+              Email format
+            </label>
+          }
+          @if (sel.type === 'text' || sel.type === 'textarea') {
+            <label>
+              Min length
+              <input
+                type="number"
+                [value]="sel.validation?.minLength ?? ''"
+                (change)="updateSelectedValidation('minLength', $event)"
+              />
+            </label>
+          }
+        }
+      </div>
+    }
+  </section>
+
+  <section class="fb-panel fb-preview">
+    <div class="fb-preview-header">
+      <h3>Live Preview</h3>
+      <span class="fb-badge" [class.valid]="previewValid()" [class.invalid]="!previewValid()">
+        {{ previewValid() ? 'VALID' : 'INVALID' }}
+      </span>
+    </div>
+
+    <sf-json-form
+      [schema]="schema()"
+      (valueChange)="onPreviewValue($event)"
+      (validityChange)="onPreviewValidity($event)"
+    />
+
+    <h4>Schema JSON</h4>
+    <pre class="fb-json">{{ schema() | json }}</pre>
+  </section>
+</div>

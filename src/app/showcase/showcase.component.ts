@@ -1,49 +1,61 @@
 import { JsonPipe } from '@angular/common';
-import { Component, signal } from '@angular/core';
-import { createFormSchemaFromJson, JsonFormComponent } from '../../lib';
-import type { FormSchema } from '../../lib';
+import { Component, computed, signal } from '@angular/core';
+import {
+  createDefaultField,
+  createFormSchemaFromJson,
+  defineFormSchema,
+  FormBuilderComponent,
+  type FormSchema,
+  type FormValidity,
+} from '../../lib';
 import { type OnboardingForm, onboardingSchema } from '../schemas/onboarding.schema';
+import { OnboardingFormComponent } from './onboarding-form.component';
+
+type ShowcaseMode = 'typescript' | 'json' | 'builder';
 
 @Component({
   selector: 'app-showcase',
-  imports: [JsonFormComponent, JsonPipe],
+  standalone: true,
+  imports: [OnboardingFormComponent, FormBuilderComponent, JsonPipe],
   templateUrl: './showcase.component.html',
   styleUrl: './showcase.component.scss',
 })
 export class ShowcaseComponent {
-  protected readonly source = signal<'typescript' | 'json'>('typescript');
+  protected readonly mode = signal<ShowcaseMode>('typescript');
   protected readonly onboardingSchema = onboardingSchema;
   protected readonly jsonSchema = signal<FormSchema<OnboardingForm> | null>(null);
-  protected readonly liveValue = signal<OnboardingForm>({
-    fullName: '',
-    email: '',
-    age: 25,
-    accountType: 'personal',
-    taxId: '',
-    bio: '',
+  protected readonly builderSchema = signal<FormSchema>(defineFormSchema({ fields: [] }));
+  protected readonly activeSchema = computed<FormSchema<OnboardingForm> | null>(() => {
+    const current = this.mode();
+    if (current === 'typescript') return this.onboardingSchema;
+    if (current === 'json') return this.jsonSchema();
+    return this.builderSchema() as FormSchema<OnboardingForm>;
   });
+  protected readonly liveValue = signal<OnboardingForm | Record<string, unknown>>({} as OnboardingForm);
   protected readonly formValid = signal(false);
-  protected readonly lastSubmitted = signal<OnboardingForm | null>(null);
+  protected readonly lastSubmitted = signal<OnboardingForm | Record<string, unknown> | null>(null);
 
-  protected readonly usageSnippet = `import { defineFormSchema, JsonFormComponent } from './lib';
+  protected readonly usageSnippet = `import { defineFormSchema, JsonFormComponent, FormBuilderComponent } from './lib';
 
-interface OnboardingForm { fullName: string; email: string; ... }
+const schema = defineFormSchema<User>({ fields: [...] });
 
-const schema = defineFormSchema<OnboardingForm>({ fields: [...] });
-
-<sf-json-form
-  [schema]="schema"
-  (formSubmit)="save($event)"
-/>`;
+<sf-json-form [schema]="schema" (formSubmit)="save($event)" />
+<sf-form-builder (schemaChange)="schema = $event" />`;
 
   protected onValueChange(value: OnboardingForm): void {
     this.liveValue.set(value);
-    this.formValid.set(this.isModelValid(value));
+  }
+
+  protected onValidityChange(status: FormValidity): void {
+    this.formValid.set(status.valid);
   }
 
   protected onSubmit(value: OnboardingForm): void {
     this.lastSubmitted.set(value);
-    alert(`Form submitted!\n\n${JSON.stringify(value, null, 2)}`);
+  }
+
+  protected onBuilderSchemaChange(schema: FormSchema): void {
+    this.builderSchema.set(schema);
   }
 
   protected async loadJsonSchema(): Promise<void> {
@@ -52,37 +64,20 @@ const schema = defineFormSchema<OnboardingForm>({ fields: [...] });
       const json = await response.json();
       this.jsonSchema.set(createFormSchemaFromJson<OnboardingForm>(json));
     }
-    this.source.set('json');
+    this.mode.set('json');
   }
 
-  private isModelValid(value: OnboardingForm): boolean {
-    const schema =
-      this.source() === 'typescript' ? this.onboardingSchema : this.jsonSchema() ?? this.onboardingSchema;
-    const visibleFields = schema.fields.filter((f) => {
-      if (f.hideWhen) {
-        const rules = Array.isArray(f.hideWhen) ? f.hideWhen : [f.hideWhen];
-        return !rules.some((r) => {
-          const v = value[r.field as keyof OnboardingForm];
-          if (r.equals !== undefined) return v === r.equals;
-          if (r.notEquals !== undefined) return v !== r.notEquals;
-          return false;
-        });
-      }
-      return true;
-    });
-
-    return visibleFields.every((field) => {
-      const v = field.validation;
-      if (!v) return true;
-      const val = value[field.key];
-
-      if (v.required && (val === '' || val == null)) return false;
-      if (v.email && typeof val === 'string' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return false;
-      if (v.minLength && typeof val === 'string' && val.length < v.minLength) return false;
-      if (v.min != null && typeof val === 'number' && val < v.min) return false;
-      if (v.max != null && typeof val === 'number' && val > v.max) return false;
-
-      return true;
-    });
+  protected openBuilder(): void {
+    if (this.builderSchema().fields.length === 0) {
+      this.builderSchema.set(
+        defineFormSchema({
+          title: 'Custom Form',
+          description: 'Built with the visual form builder',
+          submitLabel: 'Submit',
+          fields: [createDefaultField('text', 'name')],
+        }),
+      );
+    }
+    this.mode.set('builder');
   }
 }

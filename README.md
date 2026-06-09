@@ -1,6 +1,6 @@
 # Signal Form Showcase
 
-A schema-driven form engine for **Angular 21** built on [Signal Forms](https://angular.dev/guide/forms/signals). Pass a JSON schema or a typed TypeScript config — get a fully validated form with typed outputs and zero boilerplate.
+A schema-driven form engine for **Angular 21** built on [Signal Forms](https://angular.dev/guide/forms/signals). Pass a JSON schema or a typed TypeScript config — get a fully validated form with nested groups, dynamic arrays, 24 field types, a visual builder, and typed outputs with zero boilerplate.
 
 ## Why this exists
 
@@ -8,12 +8,16 @@ Reactive Forms are powerful but verbose. Every enterprise app repeats the same p
 
 ## Features
 
-- **JSON or TypeScript schemas** — same shape, two input modes
-- **Typed outputs** — `defineFormSchema<T>()` ties field keys to your model interface
-- **Signal Forms native** — fine-grained reactivity, `hidden()` for conditional fields that don't block validation
+- **JSON or TypeScript schemas** — same shape, two input modes (`public/schemas/onboarding.json` mirrors the typed demo)
+- **24 field types** — text, email, number, textarea, url, tel, date, time, select, multiselect, checkbox, switch, radio, range, file, hidden, and more
+- **Nested groups** — `{ type: 'group', fields: [...] }` for object-shaped model sections (e.g. address)
+- **Dynamic arrays** — `{ type: 'array', itemFields: [...], minItems, maxItems }` with add/remove UI
+- **Visual form builder** — `<sf-form-builder>` palette, inspector, live preview, JSON export
+- **Typed outputs** — `defineFormSchema<T>()` checks top-level field keys against your model interface
+- **Signal Forms native** — `[formField]` bindings, `hidden()` for conditional fields
 - **Built-in validators** — required, email, min/max, minLength/maxLength, pattern
 - **Conditional fields** — `hideWhen` (JSON-serializable) or `hideIf` (TypeScript callback)
-- **Live value stream** — `(valueChange)` for debugging and side effects
+- **Live streams** — `(valueChange)` and `(validityChange)` for debugging and UI state
 
 ## Quick start
 
@@ -22,7 +26,13 @@ npm install
 npm start
 ```
 
-Open [http://localhost:4200](http://localhost:4200).
+Open [http://localhost:4200](http://localhost:4200). The showcase has three tabs:
+
+| Tab | What it demonstrates |
+|-----|---------------------|
+| **TypeScript Schema** | Full onboarding form from `onboarding.schema.ts` |
+| **JSON File** | Same fields loaded at runtime from `public/schemas/onboarding.json` |
+| **Visual Builder** | Drag-and-drop schema editor with live preview |
 
 ## Usage
 
@@ -34,44 +44,46 @@ import { defineFormSchema, JsonFormComponent } from './lib';
 interface User {
   fullName: string;
   email: string;
-  age: number;
+  address: { street: string; city: string };
 }
 
 const schema = defineFormSchema<User>({
   title: 'Sign Up',
   submitLabel: 'Create Account',
   fields: [
+    { key: 'fullName', label: 'Full Name', type: 'text', validation: { required: true } },
+    { key: 'email', label: 'Email', type: 'email', validation: { required: true, email: true } },
     {
-      key: 'fullName',
-      label: 'Full Name',
-      type: 'text',
-      validation: { required: true, minLength: 3 },
-    },
-    {
-      key: 'email',
-      label: 'Email',
-      type: 'email',
-      validation: { required: true, email: true },
-    },
-    {
-      key: 'age',
-      label: 'Age',
-      type: 'number',
-      defaultValue: 18,
-      validation: { required: true, min: 18 },
+      key: 'address',
+      label: 'Address',
+      type: 'group',
+      fields: [
+        { key: 'street', label: 'Street', type: 'text', validation: { required: true } },
+        { key: 'city', label: 'City', type: 'text', validation: { required: true } },
+      ],
     },
   ],
 });
 
 @Component({
   imports: [JsonFormComponent],
-  template: `<sf-json-form [schema]="schema" (formSubmit)="onSubmit($event)" />`,
+  template: `
+    <sf-json-form
+      [schema]="schema"
+      (formSubmit)="onSubmit($event)"
+      (validityChange)="onValidChange($event)"
+    />
+  `,
 })
 export class SignUpComponent {
   schema = schema;
 
   onSubmit(value: User) {
-    console.log(value); // fully typed
+    console.log(value); // fully typed, nested address included
+  }
+
+  onValidChange(status: { valid: boolean; invalid: boolean }) {
+    // drive submit button, badges, etc.
   }
 }
 ```
@@ -81,41 +93,58 @@ export class SignUpComponent {
 ```typescript
 import { createFormSchemaFromJson, JsonFormComponent } from './lib';
 
-const schema = createFormSchemaFromJson<User>(
-  await fetch('/schemas/user.json').then((r) => r.json()),
+const schema = createFormSchemaFromJson<OnboardingForm>(
+  await fetch('/schemas/onboarding.json').then((r) => r.json()),
 );
 ```
 
-Example JSON with conditional field:
+Groups and arrays use the same JSON shape as TypeScript:
 
 ```json
 {
-  "fields": [
-    { "key": "accountType", "label": "Type", "type": "select", "defaultValue": "personal", "options": [...] },
-    {
-      "key": "taxId",
-      "label": "Tax ID",
-      "type": "text",
-      "validation": { "required": true },
-      "hideWhen": { "field": "accountType", "notEquals": "corporate" }
-    }
-  ]
+  "key": "address",
+  "type": "group",
+  "fields": [{ "key": "street", "type": "text", "validation": { "required": true } }]
 }
 ```
+
+```json
+{
+  "key": "emergencyContacts",
+  "type": "array",
+  "minItems": 1,
+  "itemFields": [{ "key": "name", "type": "text", "validation": { "required": true } }]
+}
+```
+
+### Visual form builder
+
+```html
+<sf-form-builder
+  [initialSchema]="mySchema"
+  (schemaChange)="mySchema = $event"
+/>
+```
+
+The builder provides a field-type palette, property inspector, reorder, and live `<sf-json-form>` preview. Export schema JSON to clipboard.
 
 ## Project structure
 
 ```
-src/lib/                      # Reusable form engine
-  types/form-schema.ts        # Schema types + defineFormSchema()
-  utils/schema-utils.ts       # Model builder, visibility, validators
-  components/json-form.component.*
+src/lib/                              # Reusable form engine
+  types/form-schema.ts                # Schema types, 24 field types, FIELD_TYPE_CATALOG
+  utils/schema-utils.ts               # Recursive model build, validators, visibility
+  components/
+    json-form.component.*             # Form root — schema in, typed events out
+    field-renderer.component.*        # Recursive groups / arrays / leaves
+    leaf-field.component.*            # Native control bindings ([formField])
+    form-builder.component.*          # Visual schema editor
 
 src/app/
-  schemas/                    # Example typed schemas
-  showcase/                   # Interactive demo
+  schemas/onboarding.schema.ts        # Full demo schema (groups + arrays)
+  showcase/                           # Interactive demo app
 
-public/schemas/               # Example JSON schemas
+public/schemas/onboarding.json        # JSON mirror of onboarding schema
 ```
 
 ## API
@@ -123,19 +152,32 @@ public/schemas/               # Example JSON schemas
 | Export | Description |
 |--------|-------------|
 | `JsonFormComponent` | `<sf-json-form>` — renders a form from schema |
-| `defineFormSchema<T>()` | Type-safe schema builder |
+| `FormBuilderComponent` | `<sf-form-builder>` — visual schema editor |
+| `FieldRendererComponent` | Recursive field tree renderer (used internally) |
+| `defineFormSchema<T>()` | Type-safe schema builder with key checking |
 | `createFormSchemaFromJson<T>()` | Parse JSON string or object |
-| `buildInitialModel()` | Build default model from schema |
+| `createDefaultField()` | Factory for builder / programmatic schemas |
+| `FIELD_TYPE_CATALOG` | Metadata for all 24 supported field types |
+| `buildInitialModel()` | Build default model from schema (groups + arrays) |
 | `shouldHideField()` | Evaluate conditional visibility |
 
-### Component inputs / outputs
+### `JsonFormComponent` inputs / outputs
 
 | Name | Type | Description |
 |------|------|-------------|
 | `[schema]` | `FormSchema<T>` | Required. Field definitions and metadata |
-| `[submittingLabel]` | `string` | Button label while submitting |
+| `[submittingLabel]` | `string` | Button label while submitting (default: `"Submitting..."`) |
 | `(formSubmit)` | `T` | Emits typed value after valid submit |
 | `(valueChange)` | `T` | Emits on every model change |
+| `(validityChange)` | `FormValidity` | Emits `{ valid, invalid }` when form status changes |
+
+### Field types
+
+**Inputs:** `text`, `email`, `password`, `number`, `textarea`, `url`, `tel`, `search`, `color`, `date`, `datetime-local`, `time`, `month`, `week`, `range`, `file`, `hidden`
+
+**Choices:** `select`, `multiselect`, `checkbox`, `switch`, `radio`
+
+**Structure:** `group`, `array`
 
 ## Scripts
 
@@ -143,7 +185,7 @@ public/schemas/               # Example JSON schemas
 |---------|-------------|
 | `npm start` | Dev server |
 | `npm run build` | Production build |
-| `npm test` | Unit tests (Vitest) |
+| `npm test` | Unit tests (Vitest, 26 specs) |
 
 ## Tech stack
 

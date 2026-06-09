@@ -28,6 +28,14 @@ const testSchema = defineFormSchema<TestForm>({
   ],
 });
 
+const flushFormInit = async (fixture: ComponentFixture<unknown>): Promise<void> => {
+  fixture.detectChanges();
+  await fixture.whenStable();
+  await new Promise<void>((resolve) => queueMicrotask(resolve));
+  await new Promise<void>((resolve) => queueMicrotask(resolve));
+  fixture.detectChanges();
+};
+
 describe('JsonFormComponent', () => {
   let fixture: ComponentFixture<JsonFormComponent<TestForm>>;
 
@@ -38,7 +46,7 @@ describe('JsonFormComponent', () => {
 
     fixture = TestBed.createComponent(JsonFormComponent<TestForm>);
     fixture.componentRef.setInput('schema', testSchema);
-    fixture.detectChanges();
+    await flushFormInit(fixture);
   });
 
   it('should create', () => {
@@ -61,8 +69,7 @@ describe('JsonFormComponent', () => {
 
     localFixture.componentInstance.valueChange.subscribe((value) => emitted.push(value));
     localFixture.componentRef.setInput('schema', testSchema);
-    localFixture.detectChanges();
-    await localFixture.whenStable();
+    await flushFormInit(localFixture);
 
     expect(emitted.length).toBeGreaterThan(0);
     expect(emitted[0]).toEqual({ name: '', email: '' });
@@ -76,6 +83,33 @@ describe('JsonFormComponent', () => {
     component.reset();
 
     expect(emitted.at(-1)).toEqual({ name: '', email: '' });
+  });
+
+  it('should emit validityChange with invalid state for empty required fields', async () => {
+    const statuses: { valid: boolean; invalid: boolean }[] = [];
+    const localFixture = TestBed.createComponent(JsonFormComponent<TestForm>);
+
+    localFixture.componentInstance.validityChange.subscribe((status) => statuses.push(status));
+    localFixture.componentRef.setInput('schema', testSchema);
+    await flushFormInit(localFixture);
+
+    expect(statuses.length).toBeGreaterThan(0);
+    expect(statuses[0].valid).toBe(false);
+    expect(statuses[0].invalid).toBe(true);
+  });
+
+  it('should expose callable field paths for formField bindings', async () => {
+    await fixture.whenStable();
+
+    const tree = (fixture.componentInstance as unknown as { formTree: () => unknown }).formTree() as Record<
+      string,
+      unknown
+    > & (() => unknown);
+
+    expect(typeof tree).toBe('function');
+    const namePath = tree['name'];
+    expect(typeof namePath).toBe('function');
+    expect(() => (namePath as unknown as () => unknown)()).not.toThrow();
   });
 
   it('should not emit formSubmit when required fields are empty', async () => {

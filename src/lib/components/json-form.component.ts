@@ -7,113 +7,110 @@ import {
   output,
   runInInjectionContext,
   signal,
-  type OnInit,
+  untracked,
 } from '@angular/core';
-import { form, FormField, submit } from '@angular/forms/signals';
-import type { FormSchema } from '../types/form-schema';
-import { applyFieldRules, buildInitialModel, VALIDATION_MESSAGES } from '../utils/schema-utils';
+import { form, submit } from '@angular/forms/signals';
+import type { ArrayFieldNode, FormSchema, FormValidity } from '../types/form-schema';
+import {
+  buildArrayItemValue,
+  buildInitialModel,
+  configureSchemaFields,
+  getValueAtPath,
+  setValueAtPath,
+} from '../utils/schema-utils';
+import { FieldRendererComponent } from './field-renderer.component';
 
 @Component({
   selector: 'sf-json-form',
   standalone: true,
-  imports: [FormField],
+  imports: [FieldRendererComponent],
   templateUrl: './json-form.component.html',
   styleUrl: './json-form.component.scss',
 })
-export class JsonFormComponent<T extends object> implements OnInit {
-  /** JSON or TypeScript-defined form schema */
+export class JsonFormComponent<T extends object> {
   schema = input.required<FormSchema<T>>();
 
-  /** Label shown on the button while the submit handler runs */
   submittingLabel = input('Submitting...');
 
-  /** Emits the typed form value after successful validation + submit */
   formSubmit = output<T>();
 
-  /** Emits on every model change for live previews / side effects */
   valueChange = output<T>();
+
+  validityChange = output<FormValidity>();
 
   protected readonly formModel = signal<T>({} as T);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   protected readonly formTree = signal<any>(undefined);
+  protected readonly formRevision = signal(0);
   protected readonly submitting = signal(false);
 
   private readonly injector = inject(Injector);
 
   constructor() {
     effect(() => {
+      this.schema();
+      untracked(() => {
+        queueMicrotask(() => this.initializeForm());
+      });
+    });
+
+    effect(() => {
       const model = this.formModel();
-      if (this.formTree()) {
-        this.valueChange.emit(model);
-      }
+      const tree = this.formTree();
+      if (!tree) return;
+
+      this.valueChange.emit(model);
+
+      const root = tree();
+      this.validityChange.emit({
+        valid: root['valid']?.() ?? false,
+        invalid: root['invalid']?.() ?? true,
+      });
     });
   }
 
-  ngOnInit(): void {
-    this.resetModel();
+  private initializeForm(): void {
+    const schema = this.schema();
+    this.formTree.set(undefined);
+
+    const model = buildInitialModel(schema);
+    this.formModel.set(model as T);
 
     const tree = runInInjectionContext(this.injector, () =>
       form(this.formModel, (schemaPath) => {
-        const getModel = () => this.formModel();
-
-        for (const field of this.schema().fields) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const path = (schemaPath as any)[field.key];
-          if (path) {
-            applyFieldRules(path, field, getModel);
-          }
-        }
+        configureSchemaFields(
+          schemaPath,
+          schema.fields,
+          () => this.formModel() as unknown as Record<string, unknown>,
+        );
       }),
     );
 
+    this.formRevision.update((revision) => revision + 1);
     this.formTree.set(tree);
   }
 
-  /** Reset the form model to schema defaults */
   reset(): void {
-    this.resetModel();
+    this.formModel.set(buildInitialModel(this.schema()) as T);
     this.valueChange.emit(this.formModel());
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected isHidden(form: any, key: string): boolean {
-    return form[key]?.()['hidden']?.() ?? false;
+  protected onAddArrayItem(event: { field: ArrayFieldNode; path: string }): void {
+    const current = getValueAtPath(this.formModel() as Record<string, unknown>, event.path);
+    const next = Array.isArray(current) ? [...current] : [];
+    next.push(buildArrayItemValue(event.field));
+    this.patchModel(event.path, next);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected isInvalid(form: any, key: string): boolean {
-    return form[key]?.()['invalid']?.() ?? false;
-  }
+  protected onRemoveArrayItem(event: { field: ArrayFieldNode; index: number; path: string }): void {
+    const current = getValueAtPath(this.formModel() as Record<string, unknown>, event.path);
+    if (!Array.isArray(current)) return;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected isTouched(form: any, key: string): boolean {
-    return form[key]?.()['touched']?.() ?? false;
-  }
+    const minItems = event.field.minItems ?? 0;
+    if (current.length <= minItems) return;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected fieldErrors(form: any, key: string): { kind: string; message: string }[] {
-    const errors = form[key]?.()['errors']?.() ?? {};
-    const field = this.schema().fields.find((f) => f.key === key);
-    const validation = field?.validation;
-    const result: { kind: string; message: string }[] = [];
-
-    for (const kind of Object.keys(errors)) {
-      let message = VALIDATION_MESSAGES[kind]?.();
-
-      if (kind === 'minLength' && validation?.minLength != null) {
-        message = VALIDATION_MESSAGES['minLength'](validation.minLength);
-      } else if (kind === 'maxLength' && validation?.maxLength != null) {
-        message = VALIDATION_MESSAGES['maxLength'](validation.maxLength);
-      } else if (kind === 'min' && validation?.min != null) {
-        message = VALIDATION_MESSAGES['min'](validation.min);
-      } else if (kind === 'max' && validation?.max != null) {
-        message = VALIDATION_MESSAGES['max'](validation.max);
-      }
-
-      result.push({ kind, message: message ?? 'Invalid value.' });
-    }
-
-    return result;
+    const next = current.filter((_, i) => i !== event.index);
+    this.patchModel(event.path, next);
   }
 
   protected async onSubmit(event: Event): Promise<void> {
@@ -125,7 +122,7 @@ export class JsonFormComponent<T extends object> implements OnInit {
       this.submitting.set(true);
 
       try {
-        const value = { ...this.formModel() };
+        const value = structuredClone(this.formModel());
         this.formSubmit.emit(value);
         this.valueChange.emit(value);
       } finally {
@@ -134,7 +131,8 @@ export class JsonFormComponent<T extends object> implements OnInit {
     });
   }
 
-  private resetModel(): void {
-    this.formModel.set(buildInitialModel(this.schema()));
+  private patchModel(path: string, value: unknown): void {
+    const next = setValueAtPath(this.formModel() as Record<string, unknown>, path, value);
+    this.formModel.set(next as T);
   }
 }

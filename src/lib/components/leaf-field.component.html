@@ -1,0 +1,65 @@
+@let f = fieldDef();
+@let path = fieldPath();
+
+@if (f.type === 'checkbox') {
+  <label class="sf-checkbox-label" [for]="fieldId()">
+    <input [id]="fieldId()" type="checkbox" [formField]="$any(path)" />
+    <span>{{ f.label }}</span>
+  </label>
+} @else if (f.type === 'switch') {
+  <label class="sf-switch-row" [for]="fieldId()">
+    <span class="sf-switch-text">{{ f.label }}</span>
+    <span class="sf-switch-track">
+      <input [id]="fieldId()" type="checkbox" class="sf-switch-input" [formField]="$any(path)" />
+      <span class="sf-switch-thumb" aria-hidden="true"></span>
+    </span>
+  </label>
+} @else if (f.type === 'radio') {
+  @if (f.label) {
+    <span class="sf-field-label">{{ f.label }}</span>
+  }
+  <div class="sf-radio-group" [class.sf-inline]="f.inline">
+    @for (opt of f.options ?? []; track opt.value) {
+      <label class="sf-radio-label">
+        <input type="radio" [value]="opt.value + ''" [formField]="$any(path)" />
+        <span>{{ opt.label }}</span>
+      </label>
+    }
+  </div>
+} @else if (f.type === 'select' || f.type === 'multiselect') {
+  @if (f.label) {
+    <label [for]="fieldId()">{{ f.label }}</label>
+  }
+  <select [id]="fieldId()" [multiple]="f.type === 'multiselect'" [formField]="$any(path)">
+    @if (f.type === 'select') {
+      <option value="" disabled selected hidden>Select…</option>
+    }
+    @for (opt of f.options ?? []; track opt.value) {
+      <option [value]="opt.value + ''">{{ opt.label }}</option>
+    }
+  </select>
+} @else if (f.type === 'textarea') {
+  @if (f.label) {
+    <label [for]="fieldId()">{{ f.label }}</label>
+  }
+  <textarea
+    [id]="fieldId()"
+    [placeholder]="f.placeholder ?? ''"
+    [formField]="$any(path)"
+  ></textarea>
+} @else {
+  @if (f.label) {
+    <label [for]="fieldId()">{{ f.label }}</label>
+  }
+  <input
+    [id]="fieldId()"
+    [type]="getInputType(f)"
+    [placeholder]="f.placeholder ?? ''"
+    [formField]="$any(path)"
+    [attr.step]="f.step ?? f.validation?.step ?? (f.type === 'range' ? 1 : null)"
+    [attr.accept]="f.type === 'file' ? f.accept : null"
+  />
+  @if (f.type === 'range') {
+    <span class="sf-range-value">{{ rangeValue() }}</span>
+  }
+}

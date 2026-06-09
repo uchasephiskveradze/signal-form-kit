@@ -1,13 +1,13 @@
-import { createFormSchemaFromJson, defineFormSchema } from './form-schema';
-
-interface TestModel {
-  name: string;
-  age: number;
-}
+import { createDefaultField, createFormSchemaFromJson, defineFormSchema, FIELD_TYPE_CATALOG } from './form-schema';
 
 describe('form-schema', () => {
   describe('defineFormSchema', () => {
     it('returns the schema with typed field keys', () => {
+      interface TestModel {
+        name: string;
+        age: number;
+      }
+
       const schema = defineFormSchema<TestModel>({
         title: 'Test',
         fields: [
@@ -25,6 +25,10 @@ describe('form-schema', () => {
 
   describe('createFormSchemaFromJson', () => {
     it('parses a JSON string', () => {
+      interface TestModel {
+        name: string;
+      }
+
       const json = JSON.stringify({
         title: 'From JSON',
         fields: [{ key: 'name', label: 'Name', type: 'text' }],
@@ -35,15 +39,21 @@ describe('form-schema', () => {
       expect(schema.title).toBe('From JSON');
       expect(schema.fields[0].key).toBe('name');
     });
+  });
 
-    it('accepts a schema object directly', () => {
-      const input = defineFormSchema<TestModel>({
-        fields: [{ key: 'name', label: 'Name', type: 'text' }],
-      });
+  describe('createDefaultField', () => {
+    it('creates structural defaults for group and array', () => {
+      const group = createDefaultField('group', 'address');
+      const array = createDefaultField('array', 'items');
 
-      const schema = createFormSchemaFromJson(input);
+      expect(group.type).toBe('group');
+      expect(array.type).toBe('array');
+      if (group.type === 'group') expect(group.fields.length).toBeGreaterThan(0);
+      if (array.type === 'array') expect(array.itemFields.length).toBeGreaterThan(0);
+    });
 
-      expect(schema).toBe(input);
+    it('catalog covers 24 field types', () => {
+      expect(FIELD_TYPE_CATALOG.length).toBe(24);
     });
   });
 });
