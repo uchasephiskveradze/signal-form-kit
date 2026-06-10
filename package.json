@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:contact-form": "ng serve contact-form",
     "build": "ng build",
     "build:lib": "ng build signal-form-kit",
     "build:lib:prod": "ng build signal-form-kit --configuration=production",

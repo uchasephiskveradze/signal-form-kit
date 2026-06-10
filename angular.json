@@ -98,6 +98,49 @@
           "defaultConfiguration": "production"
         }
       }
+    },
+    "contact-form": {
+      "projectType": "application",
+      "root": "examples/contact-form",
+      "sourceRoot": "examples/contact-form/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "examples/contact-form/src/main.ts",
+            "tsConfig": "examples/contact-form/tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "styles": ["examples/contact-form/src/styles.scss"]
+          },
+          "configurations": {
+            "production": {
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "port": 4300
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "contact-form:build:production"
+            },
+            "development": {
+              "buildTarget": "contact-form:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        }
+      }
     }
   }
 }

@@ -32,6 +32,9 @@
     },
     {
       "path": "./tsconfig.spec.json"
+    },
+    {
+      "path": "./examples/contact-form/tsconfig.app.json"
     }
   ]
 }
