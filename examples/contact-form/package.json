@@ -1,0 +1,26 @@
+{
+  "name": "contact-form-example",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "ng serve --port 4300",
+    "build": "ng build --configuration=production"
+  },
+  "dependencies": {
+    "@angular/common": "^21.1.0",
+    "@angular/compiler": "^21.1.0",
+    "@angular/core": "^21.1.0",
+    "@angular/forms": "^21.2.14",
+    "@angular/platform-browser": "^21.1.0",
+    "@signal-form-kit/core": "file:../../dist/signal-form-kit",
+    "rxjs": "~7.8.0",
+    "signal-form-showcase": "file:../..",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.1.3",
+    "@angular/cli": "^21.1.3",
+    "@angular/compiler-cli": "^21.1.0",
+    "typescript": "~5.9.2"
+  }
+}

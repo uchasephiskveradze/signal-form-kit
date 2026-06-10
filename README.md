@@ -21,6 +21,32 @@ Reactive Forms are powerful but verbose. Every enterprise app repeats the same p
 
 ## Quick start
 
+### Install in your Angular app
+
+```bash
+npm install @signal-form-kit/core
+```
+
+**Peer dependencies** (Angular 21 — must be installed in your app):
+
+```bash
+npm install @angular/core@^21 @angular/common@^21 @angular/forms@^21
+```
+
+Register providers once in `app.config.ts`:
+
+```typescript
+import { provideSignalFormKit } from '@signal-form-kit/core';
+
+export const appConfig = {
+  providers: [provideSignalFormKit()],
+};
+```
+
+Package: [npmjs.com/package/@signal-form-kit/core](https://www.npmjs.com/package/@signal-form-kit/core)
+
+### Run the showcase demo (this repo)
+
 ```bash
 npm install
 npm start
@@ -148,6 +174,8 @@ src/app/                              # Thin showcase demo app
   showcase/                           # Demo + StarRatingFieldComponent (custom type)
 
 public/schemas/onboarding.json
+
+examples/contact-form/                # Dogfood app — consumes @signal-form-kit/core from npm
 ```
 
 ## Publishing the library
@@ -251,6 +279,9 @@ Fields with `hideWhen` / `hideIf` wrap validators in Signal Forms `applyWhen` so
 | `npm run publish:lib` | Test, build, and publish `@signal-form-kit/core` to npm |
 | `npm test` | Unit tests (Vitest, 38 specs) |
 | `npm run e2e` | Playwright smoke tests (showcase flow) |
+| `npm run example:contact-form:build` | Build dogfood example (`examples/contact-form`) |
+
+See [CHANGELOG.md](./CHANGELOG.md) for release history.
 
 ## Tech stack
 
