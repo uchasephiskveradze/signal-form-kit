@@ -1,18 +1,33 @@
 <div class="showcase">
-  <header class="showcase-header">
-    <h1>Reactive Forms Supercharger</h1>
-    <p>
+  <header class="showcase__header">
+    <h1 class="showcase__title">Reactive Forms Supercharger</h1>
+    <p class="showcase__intro">
       Schema-driven forms with nested groups, arrays, 24 field types, and a visual builder —
       powered by Angular Signal Forms.
     </p>
-    <div class="source-toggle">
-      <button type="button" [class.active]="mode() === 'typescript'" (click)="mode.set('typescript')">
+    <div class="showcase__modes">
+      <button
+        type="button"
+        class="showcase__mode"
+        [class.showcase__mode--active]="mode() === 'typescript'"
+        (click)="mode.set('typescript')"
+      >
         TypeScript Schema
       </button>
-      <button type="button" [class.active]="mode() === 'json'" (click)="loadJsonSchema()">
-        JSON File
+      <button
+        type="button"
+        class="showcase__mode"
+        [class.showcase__mode--active]="mode() === 'json'"
+        (click)="openJsonMode()"
+      >
+        JSON Schema
       </button>
-      <button type="button" [class.active]="mode() === 'builder'" (click)="openBuilder()">
+      <button
+        type="button"
+        class="showcase__mode"
+        [class.showcase__mode--active]="mode() === 'builder'"
+        (click)="openBuilder()"
+      >
         Visual Builder
       </button>
     </div>
@@ -23,33 +38,139 @@
       [initialSchema]="builderSchema()"
       (schemaChange)="onBuilderSchemaChange($event)"
     />
-  } @else {
-    <main class="showcase-layout">
-      <section class="panel form-panel">
-        <div class="panel-header">
-          <h2>{{ activeSchema()?.title ?? 'Form' }}</h2>
-          @if (!jsonLoading()) {
-            <span class="badge" [class.valid]="formValid()" [class.invalid]="!formValid()">
-              {{ formValid() ? 'VALID' : 'INVALID' }}
-            </span>
+  } @else if (mode() === 'json') {
+    <div class="showcase__json">
+      <p class="showcase__json-lead">
+        The form below is rendered from the JSON schema. Edit the source and click
+        <strong>Apply schema</strong> to rebuild the form.
+      </p>
+
+      <div class="showcase__json-grid">
+        <section class="showcase__panel showcase__panel--form">
+          <div class="showcase__head showcase__head--compact">
+            <span class="showcase__label">Preview</span>
+            @if (!jsonLoading()) {
+              <span
+                class="showcase__badge"
+                [class.showcase__badge--valid]="formValid()"
+                [class.showcase__badge--invalid]="!formValid()"
+              >
+                {{ formValid() ? 'VALID' : 'INVALID' }}
+              </span>
+            }
+          </div>
+
+          @if (jsonLoading()) {
+            <div class="showcase__skeleton" aria-busy="true" aria-label="Loading JSON schema">
+              <div class="showcase__skeleton-line showcase__skeleton-line--title"></div>
+              <div class="showcase__skeleton-line showcase__skeleton-line--text"></div>
+              @for (row of [1, 2, 3, 4]; track row) {
+                <div class="showcase__skeleton-row">
+                  <div class="showcase__skeleton-field"></div>
+                  <div class="showcase__skeleton-field"></div>
+                </div>
+              }
+              <div class="showcase__skeleton-btn"></div>
+            </div>
+          } @else if (jsonLoadError(); as error) {
+            <div class="showcase__alert showcase__alert--error" role="alert">{{ error }}</div>
+          } @else if (activeSchema(); as schema) {
+            <app-onboarding-form
+              [schema]="schema"
+              [formKey]="activeFormKey()"
+              (valueChange)="onValueChange($event)"
+              (formSubmit)="onSubmit($event)"
+              (validityChange)="onValidityChange($event)"
+            />
           }
+        </section>
+
+        <section class="showcase__panel showcase__panel--source">
+          <div class="showcase__head">
+            <div>
+              <h2 class="showcase__head-title">Schema source</h2>
+              <p class="showcase__head-sub">public/schemas/onboarding.json</p>
+            </div>
+          </div>
+
+          <div class="showcase__toolbar">
+            <button type="button" class="showcase__btn showcase__btn--primary" (click)="applyJsonSource()">
+              Apply schema
+            </button>
+            <button type="button" class="showcase__btn" (click)="resetJsonSample()">Reset sample</button>
+            <button type="button" class="showcase__btn" (click)="copyJsonSource()">
+              {{ jsonCopied() ? 'Copied!' : 'Copy JSON' }}
+            </button>
+            <label class="showcase__btn showcase__btn--file">
+              Upload JSON
+              <input
+                type="file"
+                accept="application/json,.json"
+                (change)="onJsonFileSelected($event)"
+              />
+            </label>
+          </div>
+
+          @if (jsonParseError(); as parseError) {
+            <div class="showcase__alert showcase__alert--error" role="alert">{{ parseError }}</div>
+          }
+
+          <textarea
+            class="showcase__editor"
+            spellcheck="false"
+            [value]="jsonSourceText()"
+            (input)="onJsonSourceInput($event)"
+            aria-label="Form schema JSON source"
+          ></textarea>
+
+          <h3 class="showcase__label">Usage</h3>
+          <div class="showcase__code showcase__code--usage showcase__code--compact">
+            <pre><code>{{ jsonUsageSnippet }}</code></pre>
+          </div>
+        </section>
+      </div>
+
+      <section class="showcase__panel showcase__panel--state">
+        <div class="showcase__head">
+          <h2 class="showcase__head-title">Form model</h2>
+          <button type="button" class="showcase__btn showcase__btn--ghost" (click)="lastSubmitted.set(null)">
+            Clear submit
+          </button>
+        </div>
+        <div class="showcase__code showcase__code--model">
+          <pre><code>{{ liveValue() | json }}</code></pre>
         </div>
 
-        @if (jsonLoading()) {
-          <div class="form-skeleton" aria-busy="true" aria-label="Loading JSON schema">
-            <div class="skeleton-line skeleton-title"></div>
-            <div class="skeleton-line skeleton-text"></div>
-            @for (row of [1, 2, 3, 4]; track row) {
-              <div class="skeleton-row">
-                <div class="skeleton-field"></div>
-                <div class="skeleton-field"></div>
-              </div>
-            }
-            <div class="skeleton-button"></div>
+        @if (lastSubmitted(); as submitted) {
+          <div class="showcase__alert showcase__alert--success" role="status">
+            Form submitted successfully. See payload below.
           </div>
-        } @else if (jsonLoadError(); as error) {
-          <div class="load-error" role="alert">{{ error }}</div>
-        } @else if (activeSchema(); as schema) {
+          <h3 class="showcase__label">Last submit</h3>
+          <div
+            #submittedPanel
+            class="showcase__code showcase__code--model showcase__code--submitted"
+            [class.showcase__code--highlight]="submitHighlight()"
+          >
+            <pre><code>{{ submitted | json }}</code></pre>
+          </div>
+        }
+      </section>
+    </div>
+  } @else {
+    <main class="showcase__layout">
+      <section class="showcase__panel showcase__panel--form">
+        <div class="showcase__head showcase__head--compact">
+          <span class="showcase__label">Preview</span>
+          <span
+            class="showcase__badge"
+            [class.showcase__badge--valid]="formValid()"
+            [class.showcase__badge--invalid]="!formValid()"
+          >
+            {{ formValid() ? 'VALID' : 'INVALID' }}
+          </span>
+        </div>
+
+        @if (activeSchema(); as schema) {
           <app-onboarding-form
             [schema]="schema"
             (valueChange)="onValueChange($event)"
@@ -59,35 +180,35 @@
         }
       </section>
 
-      <section class="panel state-panel">
-        <div class="panel-header">
-          <h2>Live Output</h2>
-          <button type="button" class="reset-btn" (click)="lastSubmitted.set(null)">
-            Clear Submit
+      <section class="showcase__panel showcase__panel--state">
+        <div class="showcase__head">
+          <h2 class="showcase__head-title">Live output</h2>
+          <button type="button" class="showcase__btn showcase__btn--ghost" (click)="lastSubmitted.set(null)">
+            Clear submit
           </button>
         </div>
 
-        <h3 class="section-label">Form Model</h3>
-        <div class="json-viewer">
+        <h3 class="showcase__label">Form model</h3>
+        <div class="showcase__code showcase__code--model">
           <pre><code>{{ liveValue() | json }}</code></pre>
         </div>
 
         @if (lastSubmitted(); as submitted) {
-          <div class="success-banner" role="status">
+          <div class="showcase__alert showcase__alert--success" role="status">
             Form submitted successfully. See payload below.
           </div>
-          <h3 class="section-label">Last Typed Submit</h3>
+          <h3 class="showcase__label">Last submit</h3>
           <div
             #submittedPanel
-            class="json-viewer submitted"
-            [class.highlight]="submitHighlight()"
+            class="showcase__code showcase__code--model showcase__code--submitted"
+            [class.showcase__code--highlight]="submitHighlight()"
           >
             <pre><code>{{ submitted | json }}</code></pre>
           </div>
         }
 
-        <h3 class="section-label">Usage</h3>
-        <div class="code-snippet">
+        <h3 class="showcase__label">Usage</h3>
+        <div class="showcase__code showcase__code--usage">
           <pre><code>{{ usageSnippet }}</code></pre>
         </div>
       </section>
