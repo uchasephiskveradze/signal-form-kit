@@ -5,6 +5,13 @@ All notable changes to `@signal-form-kit/core` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-06-10
+
+### Changed
+
+- Expand npm README with feature overview, badges, nested/conditional examples, and doc links
+- Improve `package.json` keywords and description for discoverability
+
 ## [0.1.1] - 2026-06-09
 
 ### Changed
@@ -29,5 +36,6 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Form remount via `formKey` / `reloadSchema()`
 - Unit, integration, and Playwright E2E tests in the showcase repo
 
+[0.1.2]: https://github.com/uchasephiskveradze/signal-form-kit/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/uchasephiskveradze/signal-form-kit/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/uchasephiskveradze/signal-form-kit/releases/tag/v0.1.0

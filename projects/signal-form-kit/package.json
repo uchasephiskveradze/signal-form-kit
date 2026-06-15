@@ -1,8 +1,18 @@
 {
   "name": "@signal-form-kit/core",
-  "version": "0.1.1",
-  "description": "Schema-driven forms for Angular Signal Forms — nested groups, arrays, custom field types, and a visual builder.",
-  "keywords": ["angular", "forms", "signal-forms", "schema", "json-form"],
+  "version": "0.1.2",
+  "description": "Schema-driven forms for Angular 21 Signal Forms — nested groups, arrays, conditional validation, custom fields, and a visual builder.",
+  "keywords": [
+    "angular",
+    "angular21",
+    "forms",
+    "signal-forms",
+    "schema",
+    "json-form",
+    "dynamic-forms",
+    "form-builder",
+    "reactive-forms"
+  ],
   "license": "MIT",
   "author": "Ucha Sephiskveradze <ucha.sephiskveradze@gmail.com>",
   "homepage": "https://github.com/uchasephiskveradze/signal-form-kit#readme",
