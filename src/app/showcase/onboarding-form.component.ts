@@ -14,6 +14,7 @@ import type { OnboardingForm } from '../schemas/onboarding.schema';
 })
 export class OnboardingFormComponent {
   schema = input.required<FormSchema<OnboardingForm>>();
+  formKey = input<string | number>(0);
   valueChange = output<OnboardingForm>();
   formSubmit = output<OnboardingForm>();
   validityChange = output<FormValidity>();

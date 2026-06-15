@@ -1,5 +1,6 @@
 <sf-json-form
   [schema]="schema()"
+  [formKey]="formKey()"
   (valueChange)="onValueChange($event)"
   (formSubmit)="onFormSubmit($event)"
   (validityChange)="onValidityChange($event)"
