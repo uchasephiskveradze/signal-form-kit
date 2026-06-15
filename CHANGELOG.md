@@ -5,6 +5,12 @@ All notable changes to `@signal-form-kit/core` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Showcase **JSON Schema** tab with editable source panel, apply/reset/copy/upload, and live form preview
+
 ## [0.1.2] - 2026-06-10
 
 ### Changed
