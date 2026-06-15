@@ -57,7 +57,7 @@ Open [http://localhost:4200](http://localhost:4200). The showcase has three tabs
 | Tab | What it demonstrates |
 |-----|---------------------|
 | **TypeScript Schema** | Full onboarding form from `onboarding.schema.ts` |
-| **JSON File** | Same fields loaded at runtime from `public/schemas/onboarding.json` |
+| **JSON Schema** | Form + editable JSON source panel — edit schema, Apply, upload, or reset sample |
 | **Visual Builder** | Drag-and-drop schema editor with live preview |
 
 ## Usage
