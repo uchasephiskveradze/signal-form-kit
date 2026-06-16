@@ -71,7 +71,7 @@ describe('FormBuilderComponent', () => {
 
     expect(el.querySelector('.fb-empty')).toBeNull();
     expect(el.querySelector('sf-json-form')).toBeTruthy();
-    expect(el.querySelector('.fb-json')?.textContent).toContain('"type": "text"');
+    expect(el.querySelector('.fb-json--schema')?.textContent).toContain('"type": "text"');
   });
 
   it('should add nested fields inside a group', async () => {
@@ -86,7 +86,7 @@ describe('FormBuilderComponent', () => {
     paletteButton(el, 'Text').click();
     await flush(fixture);
 
-    const json = el.querySelector('.fb-json')?.textContent ?? '';
+    const json = el.querySelector('.fb-json--schema')?.textContent ?? '';
     expect(json).toContain('"type": "group"');
     expect(json).toMatch(/"fields":\s*\[[\s\S]*"type":\s*"text"/);
   });
@@ -100,7 +100,7 @@ describe('FormBuilderComponent', () => {
     await flush(fixture);
 
     expect(el.querySelector('.fb-empty')).toBeTruthy();
-    expect(el.querySelector('.fb-json')?.textContent).toContain('"fields": []');
+    expect(el.querySelector('.fb-json--schema')?.textContent).toContain('"fields": []');
   });
 
   it('should render live preview with added fields', async () => {
@@ -111,12 +111,30 @@ describe('FormBuilderComponent', () => {
     expect(el.querySelector('.fb-preview .sf-form')).toBeTruthy();
   });
 
+  it('should show submitted payload in the preview panel', async () => {
+    const el = fixture.nativeElement as HTMLElement;
+    paletteButton(el, 'Text').click();
+    await flush(fixture);
+
+    const input = el.querySelector('.fb-preview input[type="text"]') as HTMLInputElement;
+    input.focus();
+    input.value = 'Ada Lovelace';
+    input.dispatchEvent(new InputEvent('input', { bubbles: true, data: 'Ada Lovelace' }));
+    await flush(fixture);
+
+    (el.querySelector('.fb-preview form') as HTMLFormElement).requestSubmit();
+    await flush(fixture);
+
+    expect(el.querySelector('.fb-submit-success')?.textContent).toContain('Form submitted successfully');
+    expect(el.querySelector('.fb-json--submitted')?.textContent).toContain('Ada Lovelace');
+  });
+
   it('should resolve nested paths in the field tree', async () => {
     const el = fixture.nativeElement as HTMLElement;
     paletteButton(el, 'Group').click();
     await flush(fixture);
 
-    const groupKeyMatch = el.querySelector('.fb-json')?.textContent?.match(/"key":\s*"([^"]+)"/);
+    const groupKeyMatch = el.querySelector('.fb-json--schema')?.textContent?.match(/"key":\s*"([^"]+)"/);
     expect(groupKeyMatch).toBeTruthy();
     const groupKey = groupKeyMatch![1];
 
@@ -124,7 +142,7 @@ describe('FormBuilderComponent', () => {
     paletteButton(el, 'Text').click();
     await flush(fixture);
 
-    const schema = JSON.parse(el.querySelector('.fb-json')!.textContent!);
+    const schema = JSON.parse(el.querySelector('.fb-json--schema')!.textContent!);
     const group = schema.fields[0];
     expect(isGroupField(group)).toBe(true);
     const childKey = group.fields.at(-1)?.key;

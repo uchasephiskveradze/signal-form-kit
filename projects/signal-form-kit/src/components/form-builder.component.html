@@ -149,9 +149,22 @@
       [schema]="schema()"
       (valueChange)="onPreviewValue($event)"
       (validityChange)="onPreviewValidity($event)"
+      (formSubmit)="onPreviewSubmit($event)"
     />
 
+    <h4>Form model</h4>
+    <pre class="fb-json fb-json--model">{{ previewValue() | json }}</pre>
+
+    @if (previewSubmitted(); as submitted) {
+      <p class="fb-submit-success" role="status">Form submitted successfully. Payload below.</p>
+      <div class="fb-preview-output-header">
+        <h4>Last submit</h4>
+        <button type="button" class="fb-clear-submit" (click)="clearPreviewSubmit()">Clear</button>
+      </div>
+      <pre class="fb-json fb-json--submitted">{{ submitted | json }}</pre>
+    }
+
     <h4>Schema JSON</h4>
-    <pre class="fb-json">{{ schema() | json }}</pre>
+    <pre class="fb-json fb-json--schema">{{ schema() | json }}</pre>
   </section>
 </div>

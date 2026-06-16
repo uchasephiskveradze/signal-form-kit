@@ -48,6 +48,7 @@ export class FormBuilderComponent implements OnInit {
   protected readonly addTargetPath = signal('');
   protected readonly previewValue = signal<Record<string, unknown>>({});
   protected readonly previewValid = signal(false);
+  protected readonly previewSubmitted = signal<Record<string, unknown> | null>(null);
 
   protected readonly selectedField = computed(() => {
     const path = this.selectedPath();
@@ -183,6 +184,14 @@ export class FormBuilderComponent implements OnInit {
 
   protected onPreviewValidity(status: { valid: boolean }): void {
     this.previewValid.set(status.valid);
+  }
+
+  protected onPreviewSubmit(value: object): void {
+    this.previewSubmitted.set(value as Record<string, unknown>);
+  }
+
+  protected clearPreviewSubmit(): void {
+    this.previewSubmitted.set(null);
   }
 
   private emitSchema(): void {
