@@ -22,7 +22,7 @@ test.describe('Showcase smoke', () => {
     await page.goto('/');
 
     await expect(page.getByRole('heading', { name: 'Reactive Forms Supercharger' })).toBeVisible();
-    await expect(page.locator('.form-panel h2').first()).toHaveText('Onboarding Form');
+    await expect(page.getByRole('heading', { name: 'Onboarding Form' })).toBeVisible();
     await expect(page.locator('#fullName')).toBeVisible();
     await expect(page.locator('#address\\.street')).toBeVisible();
   });
@@ -30,7 +30,7 @@ test.describe('Showcase smoke', () => {
   test('updates live JSON as the user types', async ({ page }) => {
     await page.goto('/');
 
-    const liveOutput = page.locator('.state-panel .json-viewer').first().locator('code');
+    const liveOutput = page.locator('.showcase__layout .showcase__code--model code').first();
     await page.locator('#fullName').fill('Live JSON Test');
 
     await expect(liveOutput).toContainText('"fullName": "Live JSON Test"');
@@ -49,7 +49,7 @@ test.describe('Showcase smoke', () => {
     await submit.click();
 
     await expect(page.getByRole('status')).toContainText('Form submitted successfully');
-    const submittedJson = page.locator('.json-viewer.submitted code');
+    const submittedJson = page.locator('.showcase__code--submitted code');
     await expect(submittedJson).toContainText('"fullName": "Jane Doe"');
     await expect(submittedJson).toContainText('"street": "42 Main St"');
     await expect(submittedJson).toContainText('"email": "jane@example.com"');
@@ -65,7 +65,7 @@ test.describe('Showcase smoke', () => {
     await page.getByRole('button', { name: 'Complete Onboarding' }).click();
 
     await expect(page.getByRole('status')).toContainText('Form submitted successfully');
-    const submittedJson = page.locator('.json-viewer.submitted code');
+    const submittedJson = page.locator('.showcase__code--submitted code');
     await expect(submittedJson).toContainText('"accountType": "personal"');
     await expect(submittedJson).toContainText('"taxId": ""');
   });
