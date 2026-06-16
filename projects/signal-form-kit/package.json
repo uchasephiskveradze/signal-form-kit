@@ -1,6 +1,6 @@
 {
   "name": "@signal-form-kit/core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Schema-driven forms for Angular 21 Signal Forms — nested groups, arrays, conditional validation, custom fields, and a visual builder.",
   "keywords": [
     "angular",

@@ -7,9 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-06-16
+
 ### Added
 
-- Showcase **JSON Schema** tab with editable source panel, apply/reset/copy/upload, and live form preview
+- `FormBuilderComponent` preview panel: live **form model** JSON, **last submit** payload, and clear action
+
+### Changed
+
+- Showcase **JSON Schema** tab: editable source panel, apply/reset/copy/upload, live form preview, and `formKey` remount on apply
+- Showcase JSON UX: dynamic schema source label, Apply disabled when source is unchanged, separate errors for clipboard vs parse failures
+- Showcase styles: BEM layout, focus-visible rings on toolbar controls, upload button pointer cursor fix
+- E2E smoke tests: selectors updated for showcase BEM classes
 
 ## [0.1.2] - 2026-06-10
 
@@ -42,6 +51,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Form remount via `formKey` / `reloadSchema()`
 - Unit, integration, and Playwright E2E tests in the showcase repo
 
+[0.1.3]: https://github.com/uchasephiskveradze/signal-form-kit/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/uchasephiskveradze/signal-form-kit/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/uchasephiskveradze/signal-form-kit/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/uchasephiskveradze/signal-form-kit/releases/tag/v0.1.0
