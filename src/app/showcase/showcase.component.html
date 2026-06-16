@@ -89,12 +89,18 @@
           <div class="showcase__head">
             <div>
               <h2 class="showcase__head-title">Schema source</h2>
-              <p class="showcase__head-sub">public/schemas/onboarding.json</p>
+              <p class="showcase__head-sub">{{ jsonSourceLabel() }}</p>
             </div>
           </div>
 
           <div class="showcase__toolbar">
-            <button type="button" class="showcase__btn showcase__btn--primary" (click)="applyJsonSource()">
+            <button
+              type="button"
+              class="showcase__btn showcase__btn--primary"
+              [disabled]="!jsonCanApply()"
+              [title]="jsonCanApply() ? 'Rebuild the preview from the editor source' : 'No changes to apply — edit the JSON first'"
+              (click)="applyJsonSource()"
+            >
               Apply schema
             </button>
             <button type="button" class="showcase__btn" (click)="resetJsonSample()">Reset sample</button>
@@ -110,6 +116,10 @@
               />
             </label>
           </div>
+
+          @if (jsonActionError(); as actionError) {
+            <div class="showcase__alert showcase__alert--error" role="alert">{{ actionError }}</div>
+          }
 
           @if (jsonParseError(); as parseError) {
             <div class="showcase__alert showcase__alert--error" role="alert">{{ parseError }}</div>

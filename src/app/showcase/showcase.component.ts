@@ -31,7 +31,15 @@ export class ShowcaseComponent {
   protected readonly jsonLoading = signal(false);
   protected readonly jsonLoadError = signal<string | null>(null);
   protected readonly jsonParseError = signal<string | null>(null);
+  protected readonly jsonActionError = signal<string | null>(null);
   protected readonly jsonCopied = signal(false);
+  protected readonly jsonSourceLabel = signal('public/schemas/onboarding.json');
+  protected readonly jsonAppliedSourceText = signal('');
+  protected readonly jsonCanApply = computed(
+    () =>
+      this.jsonSourceText().trim().length > 0 &&
+      this.jsonSourceText().trim() !== this.jsonAppliedSourceText().trim(),
+  );
   protected readonly builderSchema = signal<FormSchema>(defineFormSchema({ fields: [] }));
   protected readonly activeSchema = computed<FormSchema<OnboardingForm> | null>(() => {
     const current = this.mode();
@@ -97,13 +105,20 @@ const schema = createFormSchemaFromJson(
   protected onJsonSourceInput(event: Event): void {
     this.jsonSourceText.set((event.target as HTMLTextAreaElement).value);
     this.jsonParseError.set(null);
+    this.jsonActionError.set(null);
+    this.jsonSourceLabel.set('Custom schema');
   }
 
   protected applyJsonSource(): void {
+    if (!this.jsonCanApply()) return;
+
     try {
-      const schema = createFormSchemaFromJson<OnboardingForm>(this.jsonSourceText());
+      const source = this.jsonSourceText().trim();
+      const schema = createFormSchemaFromJson<OnboardingForm>(source);
       this.jsonSchema.set(schema);
+      this.jsonAppliedSourceText.set(source);
       this.jsonParseError.set(null);
+      this.jsonActionError.set(null);
       this.jsonFormKey.update((key) => key + 1);
       this.lastSubmitted.set(null);
     } catch {
@@ -113,6 +128,7 @@ const schema = createFormSchemaFromJson(
 
   protected async resetJsonSample(): Promise<void> {
     this.jsonParseError.set(null);
+    this.jsonActionError.set(null);
     this.jsonLoadError.set(null);
     await this.loadJsonSample();
   }
@@ -121,13 +137,15 @@ const schema = createFormSchemaFromJson(
     const text = this.jsonSourceText();
     if (!text) return;
 
+    this.jsonActionError.set(null);
+
     try {
       await navigator.clipboard.writeText(text);
       this.jsonCopied.set(true);
       if (this.jsonCopyTimer) clearTimeout(this.jsonCopyTimer);
       this.jsonCopyTimer = setTimeout(() => this.jsonCopied.set(false), 2000);
     } catch {
-      this.jsonParseError.set('Could not copy to clipboard.');
+      this.jsonActionError.set('Could not copy to clipboard.');
     }
   }
 
@@ -136,10 +154,14 @@ const schema = createFormSchemaFromJson(
     const file = input.files?.[0];
     if (!file) return;
 
+    this.jsonActionError.set(null);
+
     try {
       const text = await file.text();
-      JSON.parse(text);
-      this.jsonSourceText.set(JSON.stringify(JSON.parse(text), null, 2));
+      const json = JSON.parse(text);
+      const formatted = JSON.stringify(json, null, 2);
+      this.jsonSourceText.set(formatted);
+      this.jsonSourceLabel.set(file.name);
       this.jsonParseError.set(null);
       input.value = '';
       this.applyJsonSource();
@@ -175,7 +197,10 @@ const schema = createFormSchemaFromJson(
       }
       const text = await response.text();
       const json = JSON.parse(text) as FormSchema<OnboardingForm>;
-      this.jsonSourceText.set(JSON.stringify(json, null, 2));
+      const formatted = JSON.stringify(json, null, 2);
+      this.jsonSourceText.set(formatted);
+      this.jsonAppliedSourceText.set(formatted);
+      this.jsonSourceLabel.set('public/schemas/onboarding.json');
       this.jsonSchema.set(createFormSchemaFromJson(json));
       this.jsonFormKey.update((key) => key + 1);
     } catch {

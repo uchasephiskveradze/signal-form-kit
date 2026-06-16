@@ -10,7 +10,17 @@ $bp-sm: 640px;
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
+  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(91, 91, 214, 0.35);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
 }
 
 @mixin code-block {
@@ -215,8 +225,12 @@ $bp-sm: 640px;
       border-color: var(--sf-primary);
       color: #fff;
 
-      &:hover {
+      &:hover:not(:disabled) {
         filter: brightness(1.05);
+      }
+
+      &:disabled {
+        opacity: 0.6;
       }
     }
 
@@ -234,12 +248,13 @@ $bp-sm: 640px;
       overflow: hidden;
       display: inline-flex;
       align-items: center;
+      cursor: pointer;
 
       input[type='file'] {
         position: absolute;
         inset: 0;
         opacity: 0;
-        cursor: pointer;
+        pointer-events: none;
       }
     }
   }
